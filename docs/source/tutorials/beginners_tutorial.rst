@@ -10,7 +10,7 @@ How to install Python
 
 A code is a list of instructions written in a given programming language. Your computer will interpret the instructions and perform tasks accordingly. In order for your computer to understand instructions written in Python, you need to install the `Python <http://www.python.org/>`_ interpreter from its official website: pick the "Download" menu, pick your operating system (for example Windows) and download the executable file (for example "Windows x86-64 executable installer") for the Python version that you want.
 
-There are several versions of Python: roughly speaking, each version corresponds to different sets of instructions that can be written by the programmer and understood by the computer. The first version of this code was written with Python 3.6. You should download Python 3.6.X where X can be any number. StackMat will very likely work with other Python versions that start with 3.X.X but this is not guaranteed.
+There are several versions of Python: roughly speaking, each version corresponds to different sets of instructions that can be written by the programmer and understood by the computer. The first version of this code was written with Python 3.6. You should download Python 3.6.X where X can be any number. PyLlama will very likely work with other Python versions that start with 3.X.X but this is not guaranteed.
 
 ..
     TODO check Python 3.8
@@ -22,7 +22,7 @@ Your IDE needs to know where the Python interpreter is located on your computer.
 How to install packages that PyLlama needs
 -------------------------------------------
 
-StackMat uses functions that are implemented in common Python packages (for example, the cosine function comes with the package NumPy). To use StackMat, you need to install the following packages:
+PyLlama uses functions that are implemented in common Python packages (for example, the cosine function comes with the package NumPy). To use PyLlama, you need to install the following packages:
 
 - NumPy version 3.18.2
 - ScyPy version 1.2.1
@@ -44,16 +44,16 @@ The steps that you need to follow to install your packages depend on the IDE tha
 How to install PyLlama
 -----------------------
 
-The StackMat code is stored on GitHub. You should go to `its GitHub repository <https://www.google.com>`_ and click on the download button. Then, unzip the archive and place all files in a dedicated folder.
+The PyLlama code is stored on GitHub. You should go to `its GitHub repository <https://www.google.com>`_ and click on the download button. Then, unzip the archive and place all files in a dedicated folder.
 
 ..
     TODO add link to GitHub
 
 There are several files in the archive:
 
-- ``pyllama.py``: the StackMat code is a set of pre-defined sets of instructions (functions) that you can use. You don’t need to modify it and you should not run it. However, your interpreter needs to access this file to use the functions that it contains.
+- ``pyllama.py``: the PyLlama code is a set of pre-defined sets of instructions (functions) that you can use. You don’t need to modify it and you should not run it. However, your interpreter needs to access this file to use the functions that it contains.
 - ``cholesteric.py`` and ``geometry.py``: these codes contain pre-defined instructions that are required to model cholesterics and to display 3D representations. Your interpreter also needs to access these file to use the functions that it contains if you want to model cholesterics.
-- a collection of files that are named ``script_XXXX.py``: these are examples of codes that you can run. These scripts use functions from ``stackmat.py`` in order to model different examples of stacks, for example to plot a spectrum. You can write your script from scratch or you can find one that resembles the stack that you want to model and edit it.
+- a collection of files that are named ``script_XXXX.py``: these are examples of codes that you can run. These scripts use functions from ``pyllama.py`` in order to model different examples of stacks, for example to plot a spectrum. You can write your script from scratch or you can find one that resembles the stack that you want to model and edit it.
 
 How to modify and run a script
 ------------------------------
