@@ -6,7 +6,6 @@ import warnings
 import time  # to calculate the time elapsed for a spectrum
 import pickle  # to save as Pickle file
 import scipy.io  # to save as Matlab file
-import random as rd  # for Bruno's random cholesteric
 
 
 # Constants
@@ -18,7 +17,7 @@ y_u = np.array([0, 1, 0])
 z_u = np.array([0, 0, 1])
 
 # Threshold for zero
-thr = 1e-7  # 0
+thr = 1e-7
 
 
 # General functions
@@ -381,10 +380,6 @@ class Layer(object):
         res2 = res_sympy[2][2][0] / res_sympy[2][2][0].norm()
         res3 = res_sympy[3][2][0] / res_sympy[3][2][0].norm()
         # Cast the eigenvalues and eigenvectors in the appropriate variables
-        # p0_sy = np.matrix(res_sympy[0][2][0].evalf(precision))
-        # p1_sy = np.matrix(res_sympy[1][2][0].evalf(precision))
-        # p2_sy = np.matrix(res_sympy[2][2][0].evalf(precision))
-        # p3_sy = np.matrix(res_sympy[3][2][0].evalf(precision))
         p0_sy = np.array(res0.evalf(precision))
         p1_sy = np.array(res1.evalf(precision))
         p2_sy = np.array(res2.evalf(precision))
@@ -481,20 +476,12 @@ class Layer(object):
         # Calculate Cp0 and Cp1 using Pointing vectors
         Cp0 = Layer._calc_cp(Py[id_trans[0]][0], Py[id_trans[0]][1])
         Cp1 = Layer._calc_cp(Py[id_trans[1]][0], Py[id_trans[1]][1])
-        # if np.isnan(float(Cp0)):
-        #    Cp0 = 0
-        # if np.isnan(float(Cp1)):
-        #    Cp1 = 0
         if np.abs(Cp0 - Cp1) > thr:  # it is birefringent  # mmb put strictly above
             # Sort the trans
             if (Cp1 - Cp0) < thr:
                 id_trans = [id_trans[1], id_trans[0]]
             Cp0 = Layer._calc_cp(Py[id_refl[0]][0], Py[id_refl[0]][1])
             Cp1 = Layer._calc_cp(Py[id_refl[1]][0], Py[id_refl[1]][1])
-            # if np.isnan(float(Cp0)):
-            #    Cp0 = 0
-            # if np.isnan(float(Cp1)):
-            #    Cp1 = 0
             # Sort the refl
             if (Cp1 - Cp0) < thr:
                 id_refl = [id_refl[1], id_refl[0]]
@@ -627,7 +614,6 @@ class Layer(object):
         p_unsorted, q_unsorted, partial_waves_unsorted = self._calc_p_q_unsorted(method="numpy")
         # Sort them according to Passler's procedure
         p_sorted, q_sorted, partial_waves_sorted = self._sort_p_q(p_unsorted, q_unsorted, partial_waves_unsorted)
-        #p_sorted, partial_waves_sorted = self.correct_p(q_sorted)
         return p_sorted, q_sorted, partial_waves_sorted
 
     def build_P_Q(self):
@@ -710,16 +696,7 @@ class HalfSpace(Layer):
                 [0,         1,              0,          1],
                 [0,         n * cos_phi,    0,          -n * cos_phi]
             ])
-            #p_sorted_mat = np.array([
-            #    [0,             cos_phi,        0,              cos_phi],
-            #    [0,             n,              0,              -n],
-            #    [1,             0,              1,              0],
-            #    [n * cos_phi,   0,              -n * cos_phi,   0]
-            #])
             partial_waves_sorted = Wave.matrix_to_waves(p_sorted_mat, self.eps, self.Kx)
-            # Sort and correct:
-            #p_sorted_mat, q_sorted, partial_waves_sorted = self._sort_p_q(p_sorted_mat, q_sorted, partial_waves_sorted)
-            #p_sorted_mat, partial_waves_sorted = self.correct_p(q_sorted)
             return p_sorted_mat, q_sorted, partial_waves_sorted
         else:
             raise Exception('Invalid HalfSpace category.')
@@ -1002,10 +979,8 @@ class Structure(object):
         E = np.identity(4)
         for kl in range(0, N_layers, 1):
             E_layer = la_sp.expm(1j * self.layers[kl].D * self.layers[kl].thickness * self.k0)
-            #E_period = np.dot(E_period, E_layer)
             E_period = np.dot(E_layer, E_period)
         for kp in range(0, self.N_periods, 1):
-            #E = np.dot(E, E_period)
             E = np.dot(E_period, E)
         return E
 
@@ -1027,32 +1002,10 @@ class Structure(object):
 
         :return: transfer matrix, a 4x4 Numpy array
         """
-        #N_layers = len(self.layers)
-        #T_period = np.identity(4)
-        #T = np.identity(4)
-        #for kl in range(0, N_layers, 1):
-        #    T_layer = la_np.multi_dot((self.layers[kl].P, self.layers[kl].Q, la_np.inv(self.layers[kl].P)))
-        #    #T_period = np.dot(T_period, T_layer)
-        #    T_period = np.dot(T_layer, T_period)
-        #for kp in range(0, self.N_periods, 1):
-        #    #T = np.dot(T, T_period)
-        #    T = np.dot(T_period, T)
-        """
-        N_layers = len(self.layers)
-        T_period = np.identity(4)
-        T = np.identity(4)
-        for kl in range(0, N_layers, 1):
-            T_layer = la_np.multi_dot((self.layers[kl].P, self.layers[kl].Q, la_np.inv(self.layers[kl].P)))
-            T_period = np.dot(T_layer, T_period)
-        for kp in range(0, self.N_periods, 1):
-            T = np.dot(T_period, T)
-        """
-
         N_layers = len(self.layers)
         T_period = np.identity(4)
         for kl in range(0, N_layers, 1):
             T_layer = la_np.multi_dot((self.layers[kl].P, self.layers[kl].Q, la_np.inv(self.layers[kl].P)))
-            #T_period = np.dot(T_period, T_layer)
             T_period = np.dot(T_layer, T_period)
         if self.N_periods > 2:
             # Combine the complete periodic motives, WITH POWERS OF 2
@@ -1098,8 +1051,6 @@ class Structure(object):
         S_exit = Structure.build_scattering_matrix_to_next(self.layers[-1], self.exit)
         S = self.combine_scattering_matrices(S, S_exit)
         S = self.combine_scattering_matrices(S_entry, S)
-        #S = self.combine_scattering_matrices(S_exit, S)
-        #S = self.combine_scattering_matrices(S, S_entry)
         return S
 
     def _build_scattering_matrix_partial(self):
@@ -1119,15 +1070,12 @@ class Structure(object):
         # at kl = N_layers-2 we combine the index N_layers-1 and the index N_layers-2
         # at kl = 0 we combine the index 1 the index 0
         for kl in range(N_layers - 2, -1, -1):
-        #for kl in range(0, N_layers - 1):
             S_layer = Structure.build_scattering_matrix_to_next(self.layers[kl], self.layers[kl + 1])
             S_last_period = self.combine_scattering_matrices(S_layer, S_last_period)
-            #S_last_period = self.combine_scattering_matrices(S_last_period, S_layer)
         # For the complete periodic motive (that leads to another pitch):
         # We take the uncomplete periodic motive and add the last layer transitionning to the first layer
         S_layer = Structure.build_scattering_matrix_to_next(self.layers[N_layers - 1], self.layers[0])
         S_period = self.combine_scattering_matrices(S_layer, S_last_period)
-        #S_period = self.combine_scattering_matrices(S_last_period, S_layer)
         if self.N_periods > 2:
             # Combine the complete periodic motives, WITH POWERS OF 2
             # (the commented lines help check the powers of 2 decomposition)
@@ -1148,50 +1096,15 @@ class Structure(object):
             # print('---')
             for kp in decomp_powers[0:]:
                 S = self.combine_scattering_matrices(decomp_matrices[kp], S)
-                #S = self.combine_scattering_matrices(S, decomp_matrices[kp])
                 # test = test + 2**kp
             # print(test)
-            # Combine the complete periodic motive, WITHOUT POWERS OF 2
-            # for kp in range(0, self.N_periods-2, 1):
-            #    S = self.update_scattering_matrix(S_period, S)
             # Combine the last (uncomplete) periodic motive
             S = self.combine_scattering_matrices(S_last_period, S)
-            #S = self.combine_scattering_matrices(S, S_last_period)
-        elif self.N_periods == 2:
-            S = S_period.copy()
-            S = self.combine_scattering_matrices(S_last_period, S)
-            #S = self.combine_scattering_matrices(S, S_last_period)
-        else:
-            S = S_last_period.copy()
-
-        """
-        if self.N_periods > 2:
-            S = S_period.copy()
-            # TODO remove teleport
-            #teleport_temp.S00.append(S[0, 0])
-            #teleport_temp.S01.append(S[0, 1])
-            #teleport_temp.S10.append(S[1, 0])
-            #teleport_temp.S11.append(S[1, 1])
-            #teleport_temp.Skp.append(0)
-            for kp in range(0, self.N_periods - 2):
-                S = self.combine_scattering_matrices(S_period, S)
-                #teleport_temp.S00.append(S[0, 0])
-                #teleport_temp.S01.append(S[0, 1])
-                #teleport_temp.S10.append(S[1, 0])
-                #teleport_temp.S11.append(S[1, 1])
-                #teleport_temp.Skp.append(kp + 1)
-            S = self.combine_scattering_matrices(S_last_period, S)
-            #teleport_temp.S00.append(S[0, 0])
-            #teleport_temp.S01.append(S[0, 1])
-            #teleport_temp.S10.append(S[1, 0])
-            #teleport_temp.S11.append(S[1, 1])
-            #teleport_temp.Skp.append(self.N_periods)
         elif self.N_periods == 2:
             S = S_period.copy()
             S = self.combine_scattering_matrices(S_last_period, S)
         else:
             S = S_last_period.copy()
-        """
         return S
 
     @staticmethod
@@ -1270,16 +1183,16 @@ class Structure(object):
                         for k in range(len(struct_list)):
                             if k == 0:  # this is the first chunck
                                 after = struct_list[k + 1].layers[0]
-                                S_chunk = struct_list[k]._build_scattering_matrix_partial()  # (before=before, after=after)
+                                S_chunk = struct_list[k]._build_scattering_matrix_partial()
                                 S = Structure.combine_scattering_matrices(S, S_chunk)
                                 S_after = Structure.build_scattering_matrix_to_next(struct_list[k].layers[-1], after)
                                 S = Structure.combine_scattering_matrices(S, S_after)
-                            elif k == len(struct_list) - 1:  # this is the last chunck
-                                S_chunk = struct_list[k]._build_scattering_matrix_partial()  # (before=before, after=after)
+                            elif k == len(struct_list) - 1:  # this is the last chunk
+                                S_chunk = struct_list[k]._build_scattering_matrix_partial()
                                 S = Structure.combine_scattering_matrices(S, S_chunk)
                             else:
                                 after = struct_list[k + 1].layers[0]
-                                S_chunck = struct_list[k]._build_scattering_matrix_partial()  # (before=before, after=after)
+                                S_chunck = struct_list[k]._build_scattering_matrix_partial()
                                 S = Structure.combine_scattering_matrices(S, S_chunck)
                                 S_after = Structure.build_scattering_matrix_to_next(struct_list[k].layers[-1], after)
                                 S = Structure.combine_scattering_matrices(S, S_after)
@@ -1486,18 +1399,6 @@ class Structure(object):
         details.
         """
         EM = self.build_exponential_matrix()
-        #order = np.array([
-        #    [1, 0, 0, 0],
-        #    [0, 0, 1, 0],
-        #    [0, 1, 0, 0],
-        #    [0, 0, 0, 1]
-        #])
-        #Eo = la_np.multi_dot((la_np.inv(order), EM, order))
-        #deno = Eo[0, 0] * Eo[2, 2] - Eo[0, 2] * Eo[2, 0]
-        #r_pp = (Eo[1, 0] * Eo[2, 2] - Eo[1, 2] * Eo[2, 0]) / deno
-        #r_ps = (Eo[3, 0] * Eo[2, 2] - Eo[3, 2] * Eo[2, 0]) / deno
-        #r_sp = (Eo[0, 0] * Eo[1, 2] - Eo[1, 0] * Eo[0, 2]) / deno
-        #r_ss = (Eo[0, 0] * Eo[3, 2] - Eo[3, 0] * Eo[0, 2]) / deno
 
         deno = EM[2, 2] * EM[3, 3] - EM[3, 2] * EM[2, 3]
         r_pp = (EM[3, 0] * EM[2, 3] - EM[2, 0] * EM[3, 3]) / deno
@@ -1994,9 +1895,7 @@ class CholestericModel(Model):
     :param float n_o: the ordinary refractive index
     :param float n_entry: the refractive index of the stack’s entry isotropic semi-infinite medium
     :param float n_exit: the refractive index of the stack’s exit isotropic semi-infinite medium
-    :param int N_per: the number of periods. The cholesteric ``chole`` may already represent more than one helicoid:
-    the layers created from the helicoid(s) in ``chole`` represent the periodic unit, which is repeated ``N_per`` times
-    in ``CholestericModel``.
+    :param int N_per: the number of periods. The cholesteric ``chole`` may already represent more than one helicoid: the layers created from the helicoid(s) in ``chole`` represent the periodic unit, which is repeated ``N_per`` times in ``CholestericModel``.
     :param float wl_nm: the wavelength in nanometers
     :param float theta_in_rad: the angle of incidence in radians
     """
@@ -2022,9 +1921,6 @@ class CholestericModel(Model):
                          [0, self.n_o ** 2, 0],
                          [0, 0, self.n_o ** 2]])
 
-        # Calculate the thickness of each layer (usually, the same for each layer)
-        # thickness = self.cholesteric.pitch / self.cholesteric.resolution
-
         # Create all layers of the 1-pitch structure with each its rotated permittivity
         pitch = []
         for ka in range(0, len(self.cholesteric.slicing)):
@@ -2040,18 +1936,6 @@ class CholestericModel(Model):
             layer = Layer(eps, thickness, self.Kx, self.k0)
             # Add the Layer to the pitch
             pitch.append(layer)
-        """
-        # Create all layers of the 1-pitch structure with each its rotated permittivity
-        rot_each = 2 * np.pi / self.cholesteric.resolution
-        pitch = []
-        for kl in range(0, self.cholesteric.resolution):
-            angle_rad = (0.5 * rot_each + 2 * np.pi * kl) / self.cholesteric.resolution
-            eps = Model.rotate_permittivity(eps0, angle_rad, axis='z')
-            # Create the Layer
-            layer = Layer(eps, thickness, self.Kx, self.k0)
-            # Add the Layer
-            pitch.append(layer)
-        """
         # Store all the pitches in the Structure
         chole_structure.layers.extend(pitch)
         return chole_structure
@@ -2240,15 +2124,8 @@ class StackOpticalThicknessModel(Model):
     :param int N_per: the number of periods
     """
     def __init__(self, n_list, total_thickness_nm, n_entry, n_exit, wl_nm, theta_in_rad, N_per=1):
-        #eps_list = [np.array([[ni ** 2, 0, 0], [0, ni ** 2, 0], [0, 0, ni ** 2]]) for ni in n_list]
-        #self.eps_list = eps_list
         self.n_list = n_list
         self.L = total_thickness_nm
-        #phi = 1
-        #thickness_list_temp = [wl_nm * phi / (2 * np.pi * ni) for ni in n_list]
-        #thickness_list_optical = [t * self.L / sum(thickness_list_temp) for t in thickness_list_temp]
-        #self.thickness_list = thickness_list_optical
-        #self.phi = 2 * np.pi * n_list[0] * thickness_list_optical[0] / wl_nm
         self.N_per = N_per
         self.phi = np.NaN  # optical thickness
         super().__init__(n_entry, n_exit, wl_nm, theta_in_rad)
@@ -2331,6 +2208,57 @@ class Spectrum(object):
         else:
             raise Exception('Invalid file name, must contain at least one character.')
 
+    @staticmethod
+    def create_model(model_type, model_parameters, wl):
+        # Create the appropriate Model for each wavelength
+        if model_type == "CholestericModel":
+            new_model = CholestericModel(model_parameters['chole'],
+                                         model_parameters['n_e'],
+                                         model_parameters['n_o'],
+                                         model_parameters['n_entry'],
+                                         model_parameters['n_exit'], wl,
+                                         model_parameters['N_per'],
+                                         model_parameters['theta_in_rad'])
+        elif model_type == "SlabModel":
+            default_param = dict(rotangle_rad=0, rotaxis='z')
+            model_parameters = {**default_param,
+                                **model_parameters}  # model_parameters is added to default_param and will overwrite
+            new_model = SlabModel(model_parameters['eps'],
+                                  model_parameters['thickness_nm'],
+                                  model_parameters['n_entry'],
+                                  model_parameters['n_exit'], wl,
+                                  model_parameters['theta_in_rad'],
+                                  model_parameters['rotangle_rad'],
+                                  model_parameters['rotaxis'])
+        elif model_type == "StackModel":
+            default_param = dict(N_per=1)
+            model_parameters = {**default_param,
+                                **model_parameters}  # model_parameters is added to default_param and will overwrite
+            new_model = StackModel(model_parameters['eps_list'],
+                                   model_parameters['thickness_nm_list'],
+                                   model_parameters['n_entry'],
+                                   model_parameters['n_exit'],
+                                   wl,
+                                   model_parameters['theta_in_rad'],
+                                   model_parameters['N_per'])
+        elif model_type == "StackOpticalThicknessModel":
+            default_param = dict(N_per=1)
+            model_parameters = {**default_param,
+                                **model_parameters}  # model_parameters is added to default_param and will overwrite
+            new_model = StackOpticalThicknessModel(model_parameters['n_list'],
+                                                   model_parameters['total_thickness_nm'],
+                                                   model_parameters['n_entry'],
+                                                   model_parameters['n_exit'],
+                                                   wl,
+                                                   model_parameters['theta_in_rad'],
+                                                   model_parameters['N_per'])
+
+        # elif self.motype == "SomethingElse":
+        #    raise NotImplementedError("The Spectrum calculation has not been implemented for SomethingElse yet.")
+        else:
+            raise Exception('Invalid model type.')
+        return new_model
+
     def calculate_refl_trans(self, circ=False, method="SM", talk=False):
         """
         This function creates the required ``Model`` and calculates the reflection spectrum in the linear (default) or
@@ -2374,35 +2302,22 @@ class Spectrum(object):
         t_11 = []
         # Browse through all wavelengths
         for wl in self.wl_list:
-            # Create the appropriate Model for each wavelength
-            if self.mo_type == "CholestericModel":
-                model = CholestericModel(self.mo_param['chole'], self.mo_param['n_e'], self.mo_param['n_o'],
-                                         self.mo_param['n_entry'], self.mo_param['n_exit'], wl, self.mo_param['N_per'],
-                                         self.mo_param['theta_in_rad'])
-            elif self.mo_type == "SlabModel":
-                default_param = dict(rotangle_rad=0, rotaxis='z')
-                self.mo_param = {**default_param, **self.mo_param}  # self.mo_param is added to default_param and will overwrite
-                model = SlabModel(self.mo_param['eps'], self.mo_param['thickness_nm'], self.mo_param['n_entry'],
-                                  self.mo_param['n_exit'], wl, self.mo_param['theta_in_rad'],
-                                  self.mo_param['rotangle_rad'], self.mo_param['rotaxis'])
-            elif self.mo_type == "StackModel":
-                default_param = dict(N_per=1)
-                self.mo_param = {**default_param, **self.mo_param}  # self.mo_param is added to default_param and will overwrite
-                model = StackModel(self.mo_param['eps_list'], self.mo_param['thickness_nm_list'],
-                                   self.mo_param['n_entry'], self.mo_param['n_exit'], wl, self.mo_param['theta_in_rad'],
-                                   self.mo_param['N_per'])
-            elif self.mo_type == "StackOpticalThicknessModel":
-                default_param = dict(N_per=1)
-                self.mo_param = {**default_param, **self.mo_param}  # self.mo_param is added to default_param and will overwrite
-                model = StackOpticalThicknessModel(self.mo_param['n_list'], self.mo_param['total_thickness_nm'],
-                                                   self.mo_param['n_entry'],
-                                                   self.mo_param['n_exit'], wl, self.mo_param['theta_in_rad'],
-                                                   self.mo_param['N_per'])
-            # elif self.motype == "SomethingElse":
-            #    raise NotImplementedError("The Spectrum calculation has not been implemented for SomethingElse yet.")
+            # If mo_type and mo_param is not a list, the Spectrum is for one Model only
+            if not isinstance(self.mo_type, list):
+                model = Spectrum.create_model(self.mo_type, self.mo_param, wl)
+            # If mo_type and mo_param are lists, the Spectrum is for a MixedModel
             else:
-                raise Exception('Invalid model type.')
-
+                partial_models_list = []
+                for km in range(len(self.mo_type)):
+                    partial_model = Spectrum.create_model(self.mo_type[km], self.mo_param[km], wl)
+                    partial_models_list.append(partial_model)
+                model = MixedModel(partial_models_list,
+                                   self.mo_param[0]['n_entry'],
+                                   self.mo_param[0]['n_exit'],
+                                   wl,
+                                   self.mo_param[0]['theta_in_rad'])
+                # The MixedModel class will check that the angles of incidence, n_entry and n_exit are the same for
+                # all models in the list, therefore it is not necessary to check again here.
             self.model.append(model)
 
             # Calculate the reflectance using the chosen method and for the given polarisation basis
