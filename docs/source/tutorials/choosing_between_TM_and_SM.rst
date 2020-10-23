@@ -1,7 +1,7 @@
 Choosing which matrix method to use
 ===================================
 
-.. note::  The theory that leads to the equations presented in this section is detailed in "PyLlama: a stable and flexible Python toolkit for the electromagnetic modeling of multilayered anisotropic media".
+.. note::  The theory that leads to the equations presented in this section is detailed in "PyLlama: a stable and flexible Python toolkit for the electromagnetic modeling of multilayered anisotropic media" (in preparation).
 
 The transfer matrix and the scattering matrix both link the incoming, reflected and transmitted electric fields, but their equations are built differently. The notations are displayed on Figure :numref:`schematic_Ep_Es`.
 
