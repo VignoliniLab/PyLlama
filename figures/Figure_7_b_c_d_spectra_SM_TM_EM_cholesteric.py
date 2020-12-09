@@ -11,6 +11,9 @@ exponential, transfer and scattering matrix methods. The EM and TM methods are e
 (large in terms of thickness and/or birefringence) while the SM method is expected to always work. This code will 
 therefore display warnings for the EM and TM methods in the case of the large cholesteric domain, it is an expected 
 behaviour to demonstrate the stability of the SM method.
+This script is used to calculate the spectra on Figure 7c and 7d.
+The colormap on Figure 7b is based on results from a similar script that loops on a variety of birefringences and 
+thicknesses and checks whether the TM methods works or fails.
 """
 
 
@@ -176,7 +179,7 @@ ax_11.set_title("Transmittance, big system")
 
 plt.tight_layout()
 
-fig.savefig('script_spectra_SM_TM_EM_figure.png', dpi=300)
+#fig.savefig('script_spectra_SM_TM_EM_figure.png', dpi=300)
 
 print('Time elapsed for the small system:')
 print('SM: ' + str(spectrum_1.data['time_elapsed_SM']))

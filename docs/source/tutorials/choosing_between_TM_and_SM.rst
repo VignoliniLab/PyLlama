@@ -41,9 +41,9 @@ The reflection and transmission coefficients are extracted from either of these 
 .. math::
     r_{p \: \text{to} \: p} = \frac{E_p \text{reflected}}{E_p \text{incident}}
     \quad
-    r_{p \: \text{to} \: s} = \frac{E_s \text{reflected}}{E_p \text{incident}}
-
     r_{s \: \text{to} \: p} = \frac{E_p \text{reflected}}{E_s \text{incident}}
+
+    r_{p \: \text{to} \: s} = \frac{E_s \text{reflected}}{E_p \text{incident}}
     \quad
     r_{s \: \text{to} \: s} = \frac{E_s \text{reflected}}{E_s \text{incident}}
 
@@ -52,9 +52,9 @@ and:
 .. math::
     t_{p \: \text{to} \: p} = \frac{E_p \text{transmitted}}{E_p \text{incident}}
     \quad
-    t_{p \: \text{to} \: s} = \frac{E_s \text{transmitted}}{E_p \text{incident}}
-
     t_{s \: \text{to} \: p} = \frac{E_p \text{transmitted}}{E_s \text{incident}}
+
+    t_{p \: \text{to} \: s} = \frac{E_s \text{transmitted}}{E_p \text{incident}}
     \quad
     t_{s \: \text{to} \: s} = \frac{E_s \text{transmitted}}{E_s \text{incident}}
 

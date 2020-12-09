@@ -43,14 +43,14 @@ The results are two :math:`2\times2` Numpy arrays of reflection coefficients (:m
     .. math::
 		r_{lin} =
          \begin{bmatrix}
-             r_{p \: \text{to} \: p} & r_{p \: \text{to} \: s} \\
-             r_{s \: \text{to} \: p} & r_{s \: \text{to} \: s}
+             r_{p \: \text{to} \: p} & r_{s \: \text{to} \: p} \\
+             r_{p \: \text{to} \: s} & r_{s \: \text{to} \: s}
          \end{bmatrix}
 
 		t_{lin} = 
          \begin{bmatrix}
-             t_{p \: \text{to} \: p} & t_{p \: \text{to} \: s} \\
-             t_{s \: \text{to} \: p} & t_{s \: \text{to} \: s}
+             t_{p \: \text{to} \: p} & t_{s \: \text{to} \: p} \\
+             t_{p \: \text{to} \: s} & t_{s \: \text{to} \: s}
          \end{bmatrix}
 		 
 - in the circular polarisation basis:
@@ -58,17 +58,17 @@ The results are two :math:`2\times2` Numpy arrays of reflection coefficients (:m
      .. math::
 		r_{circ} = 
          \begin{bmatrix}
-             r_{RCP \: \text{to} \: RCP} & r_{RCP \: \text{to} \: LCP} \\
-             r_{LCP \: \text{to} \: RCP} & r_{LCP \: \text{to} \: LCP}
+             r_{RCP \: \text{to} \: RCP} & r_{LCP \: \text{to} \: RCP} \\
+             r_{RCP \: \text{to} \: LCP} & r_{LCP \: \text{to} \: LCP}
          \end{bmatrix}
 		 
 		t_{circ} = 
          \begin{bmatrix}
-             t_{RCP \: \text{to} \: RCP} & t_{RCP \: \text{to} \: LCP} \\
-             t_{LCP \: \text{to} \: RCP} & t_{LCP \: \text{to} \: LCP}
+             t_{RCP \: \text{to} \: RCP} & t_{LCP \: \text{to} \: RCP} \\
+             t_{RCP \: \text{to} \: LCP} & t_{LCP \: \text{to} \: LCP}
          \end{bmatrix}
 
-For example, the user can access the reflection coefficient for incoming :math:`p`-polarised light reflected as :math:`s`-polarised light of the multilayer stack represented by the ``Structure`` ``my_stack_structure`` with:
+For example, the user can access the reflection coefficient for incoming s-polarised light reflected as p-polarised light of the multilayer stack represented by the ``Structure`` ``my_stack_structure`` with:
 ::
     J_lin, _ = my_stack_structure.get_fresnel()
     J_lin[0, 1]
@@ -86,14 +86,14 @@ The results are two :math:`2\times2` Numpy arrays of reflectances (:math:`R`) or
      .. math::
 		R_{lin} =
          \begin{bmatrix}
-             R_{p \: \text{to} \: p} & R_{p \: \text{to} \: s} \\
-             R_{s \: \text{to} \: p} & R_{s \: \text{to} \: s}
+             R_{p \: \text{to} \: p} & R_{s \: \text{to} \: p} \\
+             R_{p \: \text{to} \: s} & R_{s \: \text{to} \: s}
          \end{bmatrix}
 
 		T_{lin} =
          \begin{bmatrix}
-             T_{p \: \text{to} \: p} & T_{p \: \text{to} \: s} \\
-             T_{s \: \text{to} \: p} & T_{s \: \text{to} \: s}
+             T_{p \: \text{to} \: p} & T_{s \: \text{to} \: p} \\
+             T_{p \: \text{to} \: s} & T_{s \: \text{to} \: s}
          \end{bmatrix}
 
 
@@ -102,20 +102,20 @@ The results are two :math:`2\times2` Numpy arrays of reflectances (:math:`R`) or
      .. math::
 		R_{circ} = 
          \begin{bmatrix}
-             R_{RCP \: \text{to} \: RCP} & R_{RCP \: \text{to} \: LCP} \\
-             R_{LCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: LCP}
+             R_{RCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: RCP} \\
+             R_{RCP \: \text{to} \: LCP} & R_{LCP \: \text{to} \: LCP}
          \end{bmatrix}
 		
 		T_{circ} = 
          \begin{bmatrix}
-             T_{RCP \: \text{to} \: RCP} & T_{RCP \: \text{to} \: LCP} \\
-             T_{LCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: LCP}
+             T_{RCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: RCP} \\
+             T_{RCP \: \text{to} \: LCP} & T_{LCP \: \text{to} \: LCP}
          \end{bmatrix}
 
 To calculate the reflection and transmission spectra of the stack over a range of wavelengths, the user must create a new ``Structure`` for each wavelength and recalculate the reflectance, for example with:
 ::
     # Creation of an empty variable
-    reflection_p_to_s = []
+    reflection_s_to_p = []
 
     # Creation of the wavelengths
     wl_nm_list = range(400, 800)
@@ -143,10 +143,10 @@ To calculate the reflection and transmission spectra of the stack over a range o
 
         # Calculation of the reflectance and storage
         J_refl_lin, _ = my_stack_structure.get_refl_trans()
-        reflection_p_to_s.append(J_refl_lin[0, 1])
+        reflection_s_to_p.append(J_refl_lin[0, 1])
 
     # Plotting
-    matplotlib.pyplot.plot(wl_nm_list, reflection_p_to_s)
+    matplotlib.pyplot.plot(wl_nm_list, reflection_s_to_p)
 
 where:
 
@@ -172,14 +172,14 @@ The results are two :math:`2\times2` Numpy arrays of reflectances (:math:`R`) or
      .. math::
 		R_{lin} = 
          \begin{bmatrix}
-             R_{p \: \text{to} \: p} & R_{p \: \text{to} \: s} \\
-             R_{s \: \text{to} \: p} & R_{s \: \text{to} \: s}
+             R_{p \: \text{to} \: p} & R_{s \: \text{to} \: p} \\
+             R_{p \: \text{to} \: s} & R_{s \: \text{to} \: s}
          \end{bmatrix}
 		
 		T_{lin} = 
          \begin{bmatrix}
-             T_{p \: \text{to} \: p} & T_{p \: \text{to} \: s} \\
-             T_{s \: \text{to} \: p} & T_{s \: \text{to} \: s}
+             T_{p \: \text{to} \: p} & T_{s \: \text{to} \: p} \\
+             T_{p \: \text{to} \: s} & T_{s \: \text{to} \: s}
          \end{bmatrix}
 
 
@@ -188,14 +188,14 @@ The results are two :math:`2\times2` Numpy arrays of reflectances (:math:`R`) or
      .. math::
 		R_{circ} = 
          \begin{bmatrix}
-             R_{RCP \: \text{to} \: RCP} & R_{RCP \: \text{to} \: LCP} \\
-             R_{LCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: LCP}
+             R_{RCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: RCP} \\
+             R_{RCP \: \text{to} \: LCP} & R_{LCP \: \text{to} \: LCP}
          \end{bmatrix}
 		
 		T_{circ} = 
          \begin{bmatrix}
-             T_{RCP \: \text{to} \: RCP} & T_{RCP \: \text{to} \: LCP} \\
-             T_{LCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: LCP}
+             T_{RCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: RCP} \\
+             T_{RCP \: \text{to} \: LCP} & T_{LCP \: \text{to} \: LCP}
          \end{bmatrix}
 
 .. note::  Each children class of ``Model`` contains a ``Structure`` that can be accessed through ``my_stack_model.structure`` and the the previous part of this tutorial can be applied to ``my_stack_model.structure`` to access the partial waves, the transfer or scattering matrices and the reflection and transmission coefficients.
@@ -203,7 +203,7 @@ The results are two :math:`2\times2` Numpy arrays of reflectances (:math:`R`) or
 To calculate the reflection and transmission spectra of the stack over a range of wavelengths, the user must create a new ``Model`` for each wavelength and recalculate the reflectance and transmittance, for example with:
 ::
     # Creation of an empty variable
-    reflection_p_to_s = []
+    reflection_s_to_p = []
 
     # Creation of the wavelengths
     wl_nm_list = range(400, 800)
@@ -221,10 +221,10 @@ To calculate the reflection and transmission spectra of the stack over a range o
 
         # Calculation of the reflectance and storage
         J_refl_lin, _ = my_stack_model.get_refl_trans()
-        reflection_p_to_s.append(J_refl_lin[0, 1])
+        reflection_s_to_p.append(J_refl_lin[0, 1])
 
     # Plotting
-    matplotlib.pyplot.plot(wl_nm_list, reflection_p_to_s)
+    matplotlib.pyplot.plot(wl_nm_list, reflection_s_to_p)
 
 where:
 
@@ -245,14 +245,14 @@ where ``method`` defines the matrix method used (``"SM"`` (default) for the scat
 
 The calculated reflection spectra are stored into the dictionary ``my_stack_spectrum.data`` and can be accessed with:
 
-- in the linear polarisation basis: ``my_stack_spectrum.data["R_pp"]``, ``my_stack_spectrum.data["R_ps"]``, ``my_stack_spectrum.data["R_sp"]``, ``my_stack_spectrum.data["R_ss"]``
+- in the linear polarisation basis: ``my_stack_spectrum.data["R_p_to_p_to_p"]``, ``my_stack_spectrum.data["R_s_to_p"]``, ``my_stack_spectrum.data["R_p_to_s"]``, ``my_stack_spectrum.data["R_s_to_s"]``
 
-- in the circular polarisation basis: ``my_stack_spectrum.data["R_RR"]``, ``my_stack_spectrum.data["R_RL"]``, ``my_stack_spectrum.data["R_LR"]``, ``my_stack_spectrum.data["R_LL"]``
+- in the circular polarisation basis: ``my_stack_spectrum.data["R_R_to_R"]``, ``my_stack_spectrum.data["R_L_to_R"]``, ``my_stack_spectrum.data["R_R_to_L"]``, ``my_stack_spectrum.data["R_L_to_L"]``
 
 and similarly for the transmission spectra:
-- in the linear polarisation basis: ``my_stack_spectrum.data["T_pp"]``, ``my_stack_spectrum.data["T_ps"]``, ``my_stack_spectrum.data["T_sp"]``, ``my_stack_spectrum.data["T_ss"]``
+- in the linear polarisation basis: ``my_stack_spectrum.data["T_p_to_p"]``, ``my_stack_spectrum.data["T_s_to_p"]``, ``my_stack_spectrum.data["T_p_to_s"]``, ``my_stack_spectrum.data["T_s_to_s"]``
 
-- in the circular polarisation basis: ``my_stack_spectrum.data["T_RR"]``, ``my_stack_spectrum.data["T_RL"]``, ``my_stack_spectrum.data["T_LR"]``, ``my_stack_spectrum.data["T_LL"]``
+- in the circular polarisation basis: ``my_stack_spectrum.data["T_R_to_R"]``, ``my_stack_spectrum.data["T_L_to_R"]``, ``my_stack_spectrum.data["T_R_to_L"]``, ``my_stack_spectrum.data["T_L_to_L"]``
 
 The calculated spectra (everything stored in ``my_stack_spectrum.data``) can then be exported in MATLAB or Python-compatible format with:
 ::
@@ -286,10 +286,10 @@ The calculation the reflection spectrum of the stack over a range of wavelengths
     my_stack_spec.calculate_refl_trans()
 
     # Plotting
-    matplotlip.pyplot.plot(wl_nm_list, my_stack_spec.data["R_ps"])
+    matplotlip.pyplot.plot(wl_nm_list, my_stack_spec.data["R_s_to_p"])
 
     # Export for MATLAB
-	# All polarisation combinations are exported (pp, ps, sp, ss)
+	# All polarisation combinations are exported (p to p, s to p, p to p, s to s)
     my_stack_spec.export("my_file_name.mat")
 
 where:

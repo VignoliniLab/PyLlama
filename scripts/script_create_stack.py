@@ -147,7 +147,7 @@ my_stack_spec = pl.Spectrum(wl_nm_list, model_type, model_parameters)
 # Calculation of the reflectance spectrum in one go
 print("Computation with Spectrum starting.")
 my_stack_spec.calculate_refl_trans(talk=True)
-reflection_with_spectrum = my_stack_spec.data["R_ps"]
+reflection_with_spectrum = my_stack_spec.data["R_s_to_p"]
 
 # Plotting
 plt.plot(wl_nm_list, reflection_with_spectrum, linestyle="dotted", label="with Spectrum")

@@ -1,12 +1,12 @@
 import numpy as np
 from numpy import linalg as la_np
 from scipy import linalg as la_sp
-import sympy as sy
 import warnings
 import time  # to calculate the time elapsed for a spectrum
 import pickle  # to save as Pickle file
 import scipy.io  # to save as Matlab file
 
+# np.set_printoptions(precision=4) # TODO remove
 
 # Constants
 c = 2.998e8  # speed of light in vacuum
@@ -74,6 +74,7 @@ class Wave(object):
     :param float Hx: :math:`x`-component of the magnetic field
     :param float Hy: :math:`y`-component of the magnetic field
     """
+
     def __init__(self, epsilon, Kx, Ex, Ey, Hx, Hy):
         Ez, Hz = Wave.calc_Ez_Hz(epsilon, Kx, Ex, Ey, Hy)
         # self.wavevector = [Kx, Ky, Kz_entry]
@@ -83,6 +84,30 @@ class Wave(object):
         self.magnet = [Hx, Hy, Hz]
         S = self.calc_poynting()
         self.poynting = S
+
+    @staticmethod
+    def _calc_cp(x, y):
+        deno = (np.abs(x) ** 2 + np.abs(y) ** 2)
+        if deno == 0:
+            return 0
+        else:
+            return np.abs(x) ** 2 / deno  # (np.abs(x) ** 2 + np.abs(y) ** 2)
+
+    def calc_cp_poynting(self):
+        """
+        This function calculates the parameter Cp, used to sort a pair of partial waves between s-like and p-like
+        polarisations.
+        :return: Cp = |Sx| ** 2 / (|Sx|**2 + |Sy|**2)
+        """
+        return Wave._calc_cp(self.poynting[0], self.poynting[1])
+
+    def calc_cp_elec(self):
+        """
+        This function calculates the parameter Cp, used to sort a pair of partial waves between s and p
+        polarisations.
+        :return: Cp = |Ex| ** 2 / (|Ex|**2 + |Ey|**2)
+        """
+        return Wave._calc_cp(self.elec[0], self.elec[1])
 
     @staticmethod
     def calc_Ez_Hz(epsilon, Kx, Ex, Ey, Hy):
@@ -100,6 +125,14 @@ class Wave(object):
         Sx = self.elec[1] * self.magnet[2] - self.elec[2] * self.magnet[1]
         Sy = self.elec[2] * self.magnet[0] - self.elec[0] * self.magnet[2]
         Sz = self.elec[0] * self.magnet[1] - self.elec[1] * self.magnet[0]
+        # print("-----")
+        # print("E:")
+        # print(self.elec)
+        # print("H:")
+        # print(self.magnet)
+        # print("S:")
+        # print([Sx, Sy, Sz])
+        # print("-----")
         return [Sx, Sy, Sz]
 
     @staticmethod
@@ -107,10 +140,8 @@ class Wave(object):
         r"""
         Given a layer’s 4 partial waves as ``Waves`` objects, this function returns a matrix where the components
         :math:`E_x`, :math:`E_y`, :math:`H_x` and :math:`H_y` are arranged so that the matrix can be used as a
-        transition matrix for the layer. The function extracts Berreman’s :math:`\psi` vectors [Berreman1972]_ for each
-        wave and formats them into a matrix where each column is a :math:`\psi`.
-
-        .. [Berreman1972] 10.1364/JOSA.62.000502
+        transition matrix for the layer. The function extracts a vector :math:`\psi = [E_x, H_y, E_y, -H_x]` for each
+        of the 4 waves and formats them into a matrix where each column is a :math:`\psi`.
 
         :param list w_list: list of 4 partial waves ``Waves`` ``[w_0, w_1, w_2, w_3]``
         :param bool norm: set to True to normalise each :math:`\psi` to a modulus of 1, otherwive set to False. Must
@@ -140,11 +171,9 @@ class Wave(object):
     @staticmethod
     def matrix_to_waves(mat, epsilon, Kx):
         r"""
-        Given a layer’s 4 eigenvectors in a 4x4 Numpy array where each column corresponds to Berreman’s :math:`psi`
-        [Berreman1972]_, this function returns a list of the 4 corresponding Waves, which are easier to
-        manipulate when electric fields, magnetic fields and Poynting vectors need to be accessed.
-
-        .. [Berreman1972] 10.1364/JOSA.62.000502
+        Given a layer’s 4 eigenvectors in a 4x4 Numpy array where each column corresponds to a column vector
+        :math:`\psi = [E_x, H_y, E_y, -H_x]`, this function returns a list of the 4 corresponding Waves, which are
+        easier to manipulate when electric fields, magnetic fields and Poynting vectors need to be accessed.
 
         :param ndarray mat: 4x4 Numpy array of 4 eigenvectors :math:`\psi_0`, :math:`\psi_1`, :math:`\psi_2` and :math:`\psi_3`
                             whose values correspond to:
@@ -170,11 +199,9 @@ class Wave(object):
 class Layer(object):
     """
     This class represents a homogeneous layer in a multilayer stack and enables to build Berreman’s matrix
-    [Berreman1972]_ as well as the partial waves (eigenvalues, eigenvectors) of the layer. The layer is made of a
+    as well as the partial waves (eigenvalues, eigenvectors) of the layer. The layer is made of a
     non-magnetic and non-optically acvive material. ``Layer`` represents the physical layer for one specific
     wavelength (the material may be dispersive). Its parameters are:
-
-    .. [Berreman1972] 10.1364/JOSA.62.000502
 
     :param ndarray epsilon: permittivity tensor, a 3x3 Numpy array
     :param float thickness_nm: thickness of the ``Layer`` in nanometers
@@ -186,8 +213,12 @@ class Layer(object):
     :param bool hold: when the user decides to hold (``hold=True``) the calculation of Berreman’s matrix, the eigenvalues
         and eigenvectors, the user must then manually apply the functions to the ``Layer`` before calculating the
         transfer or scattering matrix. This is exceptional practice. The default is ``hold=True``.
+    :param String numerical_method: indicates the package to use to calculate the eigenvectors and eigenvalues of
+        the layer; either ``'numpy'`` (default) or ``'sympy'``
     """
-    def __init__(self, epsilon, thickness_nm, Kx, k0, rot_angle_rad=0, rot_axis='z', hold=False):
+
+    def __init__(self, epsilon, thickness_nm, Kx, k0, rot_angle_rad=0, rot_axis='z', hold=False,
+                 numerical_method="numpy"):
         # Assumption: not magnetic, mu = 1
         # Assumption: not optically active, rho = 0, rho' = 0
         if rot_angle_rad != 0:
@@ -196,9 +227,9 @@ class Layer(object):
         self.thickness = thickness_nm
         self.Kx = Kx
         self.k0 = k0
-        self.M = self.build_M()
-        self.A = self.build_A()
-        self.D = self.build_D()
+        self.M = self._build_M()
+        self.A = self._build_A()
+        self.D = self._build_D()
         if hold:
             self.eigenvectors = None
             self.eigenvalues = None
@@ -206,7 +237,7 @@ class Layer(object):
             self.P = None
             self.Q = None
         else:
-            p_sorted, q_sorted, partial_waves_sorted = self._calc_p_q_sorted()
+            p_sorted, q_sorted, partial_waves_sorted = self._calc_p_q_sorted(numerical_method=numerical_method)
             self.eigenvectors = p_sorted
             self.eigenvalues = q_sorted
             self.partial_waves = partial_waves_sorted
@@ -242,24 +273,20 @@ class Layer(object):
         eps_rot = la_np.multi_dot((R, eps, R.transpose()))
         return eps_rot
 
-    @staticmethod
-    def _calc_cp(x, y):
-        deno = (np.abs(x) ** 2 + np.abs(y) ** 2)
-        if deno == 0:
-            return 0
-        else:
-            return np.abs(x) ** 2 / deno  # (np.abs(x) ** 2 + np.abs(y) ** 2)
+    def _build_M(self):
+        r"""
+        This function calculates the matrix that describes the optical properties of the material.
 
-    def build_M(self):
-        """
-        This function calculates the :math:`M` matrix from Passler's paper [Passler2017]_, Equation 4 with the
-        additional assumptions that the ``Layer``’s material is non-magnetic and non-optically active. The :math:`M`
-        matrix helps calculating Berreman’s matrix [Berreman1972]_.
-
-        .. [Passler2017] 10.1364/JOSAB.34.002128
-        .. [Berreman1972] 10.1364/JOSA.62.000502
-
-        :return: :math:`M` matrix: 3x3 Numpy array
+        :return: :math:`M` matrix: 6x6 Numpy array
+                 .. math::
+                             \begin{bmatrix}
+                                 \epsilon_{xx} & \epsilon_{xy} & \epsilon_{xz} & \rho_{xx} & \rho_{xy} & \rho_{xz} \\
+                                 \epsilon_{yx} & \epsilon_{yy} & \epsilon_{yz} & \rho_{yx} & \rho_{yy} & \rho_{yz} \\
+                                 \epsilon_{zx} & \epsilon_{zy} & \epsilon_{zz} & \rho_{zx} & \rho_{zy} & \rho_{zz} \\
+                                 \rho'_{xx} & \rho'_{xy} & \rho'_{xz} & \mu_{xx} & \mu_{xy} & \mu_{xz} \\
+                                 \rho'_{yx} & \rho'_{yy} & \rho'_{yz} & \mu_{yx} & \mu_{yy} & \mu_{yz} \\
+                                 \rho'_{zx} & \rho'_{zy} & \rho'_{zz} & \mu_{zx} & \mu_{zy} & \mu_{zz} \\
+                             \end{bmatrix}
         """
         return np.array([
             [self.eps[0, 0], self.eps[0, 1], self.eps[0, 2], 0, 0, 0],
@@ -270,14 +297,10 @@ class Layer(object):
             [0, 0, 0, 0, 0, 1]
         ])
 
-    def build_A(self):
+    def _build_A(self):
         """
-        This function calculates the :math:`M` matrix from Passler's paper [Passler2017]_, Equations 8 and 9 with the
-        additional assumptions that the ``Layer``’s material is non-magnetic and non-optically active. The :math:`M`
-        matrix helps calculating Berreman’s matrix [Berreman1972]_.
-
-        .. [Passler2017] 10.1364/JOSAB.34.002128
-        .. [Berreman1972] 10.1364/JOSA.62.000502
+        This function calculates the :math:`A` matrix from Passler (DOI 10.1364/JOSAB.34.002128). It is an intermediary
+        matrix to calculate Berreman’s matrix.
 
         :return: :math:`A` matrix: 3x3 Numpy array
         """
@@ -307,18 +330,13 @@ class Layer(object):
             [A50, A51, A52, A53, A54, A55]
         ])
 
-    def build_D(self):
+    def _build_D(self):
         """
-        This function calculates Berreman’s matrix :math:`\Delta` [Berreman1972] from Passler's paper [Passler2017]_,
-        Equations 8 and 9 with the additional assumptions that the ``Layer``’s material is non-magnetic and
-        non-optically active.
-
-        .. [Passler2017] 10.1364/JOSAB.34.002128
-        .. [Berreman1972] 10.1364/JOSA.62.000502
+        This function calculates Berreman’s matrix :math:`\Delta` (DOI 10.1364/JOSA.62.000502]
 
         :return: :math:`\Delta` matrix: 3x3 Numpy array
         """
-        # Delta matrix from Passler with pre-removal of zeros
+        # Delta matrix from Berreman with pre-removal of zeros
         return np.array([
             [- self.Kx * self.eps[2, 0] / self.eps[2, 2],
              1 - self.Kx ** 2 / self.eps[2, 2],
@@ -335,7 +353,7 @@ class Layer(object):
              0]
         ])
 
-    def _calc_p_q_unsorted(self, method="numpy"):
+    def _calc_p_q_unsorted(self, numerical_method="numpy"):
         r"""
         This function calculates the ``Layer``’s eigenvectors and eigenvalues.
 
@@ -357,12 +375,12 @@ class Layer(object):
         :return q_unsorted: 4x4 diagonal matrix of eigenvalues
         :return partial_waves_unsorted: list of ``Waves`` corresponding to the eigenvectors ``p_unsorted``
         """
-        if method == "sympy":
+        if numerical_method == "sympy":
             return self._calc_p_q_unsorted_sympy()
-        elif method == "numpy":
+        elif numerical_method == "numpy":
             return self._calc_p_q_unsorted_numpy()
 
-    def _calc_p_q_unsorted_sympy(self, precision=40):
+    def _calc_p_q_unsorted_sympy(self, precision=20):
         """
         This function calculates the ``Layer``’s eigenvectors and eigenvalues with the Sympy package (symbolic
         calculation and evaluation).
@@ -370,6 +388,7 @@ class Layer(object):
         :return p_unsorted, q_unsorted, partial_waves_unsorted: matrices of eigenvectors (in columns), eigenvalues
                 (diagonal matrix) and list of corresponding ``Waves``
         """
+        import sympy as sy
         # Convert Numpy matrix to Sympy matrix
         D_sympy = sy.Matrix(self.D)
         # Calculate the eigenvalues and the non-normalised eigenvectors
@@ -384,14 +403,23 @@ class Layer(object):
         p1_sy = np.array(res1.evalf(precision))
         p2_sy = np.array(res2.evalf(precision))
         p3_sy = np.array(res3.evalf(precision))
-        q0_sy = float(np.array(res_sympy[0][0].evalf(precision)))
-        q1_sy = float(np.array(res_sympy[1][0].evalf(precision)))
-        q2_sy = float(np.array(res_sympy[2][0].evalf(precision)))
-        q3_sy = float(np.array(res_sympy[3][0].evalf(precision)))
-        p_unsorted = np.stack((p0_sy, p1_sy, p2_sy, p3_sy), axis=1)
-        p_unsorted = p_unsorted.astype(float)
+        q0_sy = complex(np.array(res_sympy[0][0].evalf(precision)))
+        q1_sy = complex(np.array(res_sympy[1][0].evalf(precision)))
+        q2_sy = complex(np.array(res_sympy[2][0].evalf(precision)))
+        q3_sy = complex(np.array(res_sympy[3][0].evalf(precision)))
+        # p_unsorted = np.stack((p0_sy, p1_sy, p2_sy, p3_sy), axis=1)
+        # p_unsorted = p_unsorted.astype(float)
+        p0_sy = p0_sy.flatten()
+        p1_sy = p1_sy.flatten()
+        p2_sy = p2_sy.flatten()
+        p3_sy = p3_sy.flatten()
+        p_unsorted = np.array([[p0_sy[0], p1_sy[0], p2_sy[0], p3_sy[0]],
+                               [p0_sy[1], p1_sy[1], p2_sy[1], p3_sy[1]],
+                               [p0_sy[2], p1_sy[2], p2_sy[2], p3_sy[2]],
+                               [p0_sy[3], p1_sy[3], p2_sy[3], p3_sy[3]]])
+        p_unsorted = p_unsorted.astype(complex)
         partial_waves_unsorted = Wave.matrix_to_waves(p_unsorted, self.eps, self.Kx)
-        q_unsorted = [q0_sy, q1_sy, q2_sy, q3_sy]
+        q_unsorted = np.array([q0_sy, q1_sy, q2_sy, q3_sy])
         return p_unsorted, q_unsorted, partial_waves_unsorted
 
     def _calc_p_q_unsorted_numpy(self):
@@ -427,81 +455,58 @@ class Layer(object):
         :return partial_waves_sorted: list of 4 ``Waves`` corresponding to the eigenvectors ``p_sorted``
         """
         # Determine the reflection and transmission eigs
+        # Analysing with Kz (sometimes fails):
+        """
+        for k in range(0, 4):
+            q_k = q_unsorted[k]
+            if np.isreal(q_k):
+                test_variable = np.real(q_k)
+            else:
+                test_variable = np.imag(q_k)
+            if test_variable >= 0:
+                id_trans.append(k)
+            else:
+                id_refl.append(k)
+        """
+        # Analyse with the Poynting vector:
         id_refl = []
         id_trans = []
-
         for k in range(0, 4, 1):
-            Szk = partial_waves_unsorted[k].poynting[2]
-            if np.isreal(Szk):
-                Szk = np.real(Szk)
-                if Szk >= 0:
-                    id_trans.append(k)
-                else:
-                    id_refl.append(k)
+            S_z_k = partial_waves_unsorted[k].poynting[2]
+            if np.isreal(S_z_k):
+                test_variable = np.real(S_z_k)
             else:
-                if np.imag(Szk) >= 0:
-                    id_trans.append(k)
-                else:
-                    id_refl.append(k)
-        """
-        for k in range(0, 4):
-            qk = q_unsorted[k]
-            if np.isreal(qk):
-                if qk >= 0:
-                    id_trans.append(k)
-                else:
-                    id_refl.append(k)
+                test_variable = np.imag(S_z_k)
+            if test_variable > 0:
+                id_trans.append(k)
             else:
-                if np.imag(qk) >= 0:
-                    id_trans.append(k)
-                else:
-                    id_refl.append(k)
-        """
+                id_refl.append(k)
+
         # Sort in a unique way by analysing p
-        Py = []
-        for k in range(0, 4):
-            # Retrieve electric and magnetic field components
-            Ex = p_unsorted[0, k]
-            Hx = -p_unsorted[3, k]
-            Ey = p_unsorted[2, k]
-            Hy = p_unsorted[1, k]
-            Ez = self.A[2, 0] * Ex + self.A[2, 1] * Ey + self.A[2, 3] * Hx + self.A[2, 4] * Hy
-            Hz = self.A[5, 0] * Ex + self.A[5, 1] * Ey + self.A[5, 3] * Hx + self.A[5, 4] * Hy
-            # Calculate Pointing vector
-            Pyx = Ey * Hz - Ez * Hy
-            Pyy = Ez * Hx - Ex * Hz
-            Pyz = Ex * Hy - Ey * Hx
-            Py.append([Pyx, Pyy, Pyz])
         # Find out whether it is birefringent
         # Calculate Cp0 and Cp1 using Pointing vectors
-        Cp0 = Layer._calc_cp(Py[id_trans[0]][0], Py[id_trans[0]][1])
-        Cp1 = Layer._calc_cp(Py[id_trans[1]][0], Py[id_trans[1]][1])
-        if np.abs(Cp0 - Cp1) > thr:  # it is birefringent  # mmb put strictly above
+        Cp0 = partial_waves_unsorted[id_trans[0]].calc_cp_poynting()
+        Cp1 = partial_waves_unsorted[id_trans[1]].calc_cp_poynting()
+        if np.abs(Cp0 - Cp1) > thr:
+            # It is birefringent
             # Sort the trans
-            if (Cp1 - Cp0) < thr:
+            if Cp1 < Cp0:
                 id_trans = [id_trans[1], id_trans[0]]
-            Cp0 = Layer._calc_cp(Py[id_refl[0]][0], Py[id_refl[0]][1])
-            Cp1 = Layer._calc_cp(Py[id_refl[1]][0], Py[id_refl[1]][1])
+            Cp0 = partial_waves_unsorted[id_refl[0]].calc_cp_poynting()
+            Cp1 = partial_waves_unsorted[id_refl[1]].calc_cp_poynting()
             # Sort the refl
-            if (Cp1 - Cp0) < thr:
+            if Cp1 < Cp0:
                 id_refl = [id_refl[1], id_refl[0]]
-        else:  # it is not birefringent
+        else:
+            # It is not birefringent
             # Sort the trans
-            x0 = p_unsorted[0, id_trans[0]]
-            z0 = p_unsorted[2, id_trans[0]]
-            Cp0 = Layer._calc_cp(x0, z0)
-            x1 = p_unsorted[0, id_trans[1]]
-            z1 = p_unsorted[2, id_trans[1]]
-            Cp1 = Layer._calc_cp(x1, z1)
+            Cp0 = partial_waves_unsorted[id_trans[0]].calc_cp_elec()
+            Cp1 = partial_waves_unsorted[id_trans[1]].calc_cp_elec()
             if (Cp1 - Cp0) < thr:
                 id_trans = [id_trans[1], id_trans[0]]
             # Sort the refl
-            x0 = p_unsorted[0, id_refl[0]]
-            z0 = p_unsorted[2, id_refl[0]]
-            Cp0 = Layer._calc_cp(x0, z0)
-            x1 = p_unsorted[0, id_refl[1]]
-            z1 = p_unsorted[2, id_refl[1]]
-            Cp1 = Layer._calc_cp(x1, z1)
+            Cp0 = partial_waves_unsorted[id_refl[0]].calc_cp_elec()
+            Cp1 = partial_waves_unsorted[id_refl[1]].calc_cp_elec()
             if (Cp1 - Cp0) < thr:
                 id_refl = [id_refl[1], id_refl[0]]
 
@@ -516,7 +521,10 @@ class Layer(object):
                                 partial_waves_unsorted[order[2]], partial_waves_unsorted[order[3]]]
         return p_sorted, q_sorted, partial_waves_sorted
 
-    def correct_p(self, q_sorted):
+    def _correct_p(self, q_sorted):
+        """
+        Passler’s equations (DOI 10.1364/JOSAB.34.002128), not used here.
+        """
         # Make gamma
         gamma00 = 1
         gamma11 = 1
@@ -529,15 +537,15 @@ class Layer(object):
             gamma12 = - (self.eps[2, 1]) / (self.eps[2, 2] - self.Kx ** 2)
         else:
             gamma01 = (self.eps[1, 2] * (self.eps[2, 0] + self.Kx * q_sorted[0]) - self.eps[1, 0] * (
-                        self.eps[2, 2] - self.Kx ** 2)) \
+                    self.eps[2, 2] - self.Kx ** 2)) \
                       / ((self.eps[2, 2] - self.Kx ** 2) * (self.eps[1, 1] - self.Kx ** 2 - q_sorted[0] ** 2) -
                          self.eps[1, 2] * self.eps[2, 1])
             gamma02 = - ((self.eps[2, 0] + self.Kx * q_sorted[0]) / (self.eps[2, 2] - self.Kx ** 2)) \
                       - gamma01 * ((self.eps[2, 1]) / (self.eps[2, 2] - self.Kx ** 2))
             gamma10 = (self.eps[2, 1] * (self.eps[0, 2] + self.Kx * q_sorted[1]) - self.eps[0, 1] * (
-                        self.eps[2, 2] - self.Kx ** 2)) \
+                    self.eps[2, 2] - self.Kx ** 2)) \
                       / ((self.eps[2, 2] - self.Kx ** 2) * (self.eps[0, 0] - q_sorted[1] ** 2) - (
-                        self.eps[0, 2] + self.Kx * q_sorted[1]) * (self.eps[2, 0] + self.Kx * q_sorted[1]))
+                    self.eps[0, 2] + self.Kx * q_sorted[1]) * (self.eps[2, 0] + self.Kx * q_sorted[1]))
             gamma12 = - gamma10 * ((self.eps[2, 0] + self.Kx * q_sorted[1]) / (self.eps[2, 2] - self.Kx ** 2)) \
                       - ((self.eps[2, 1]) / (self.eps[2, 2] - self.Kx ** 2))
         if np.abs(q_sorted[2] - q_sorted[3]) <= thr:
@@ -547,19 +555,19 @@ class Layer(object):
             gamma32 = - (self.eps[2, 1]) / (self.eps[2, 2] - self.Kx ** 2)
         else:
             gamma21 = ((self.eps[1, 0] * (self.eps[2, 2] + self.Kx ** 2)) - (
-                        self.eps[1, 2] * (self.eps[2, 0] + self.Kx * q_sorted[2]))) \
+                    self.eps[1, 2] * (self.eps[2, 0] + self.Kx * q_sorted[2]))) \
                       / (((self.eps[2, 2] + self.Kx ** 2) * (self.eps[1, 1] - self.Kx ** 2 - q_sorted[2] ** 2)) - (
-                        self.eps[1, 2] * self.eps[2, 1]))
+                    self.eps[1, 2] * self.eps[2, 1]))
             gamma22 = ((self.eps[2, 0] + self.Kx * q_sorted[2]) / (self.eps[2, 2] - self.Kx ** 2)) \
                       + gamma21 * ((self.eps[2, 1]) / (self.eps[2, 2] - self.Kx ** 2))
             gamma30 = (self.eps[2, 1] * (self.eps[0, 2] + self.Kx * q_sorted[3]) - self.eps[0, 1] * (
-                        self.eps[2, 2] - self.Kx ** 2)) \
+                    self.eps[2, 2] - self.Kx ** 2)) \
                       / (((self.eps[2, 2] - self.Kx ** 2) * (self.eps[0, 0] - q_sorted[3] ** 2)) - (
-                        (self.eps[0, 2] + self.Kx * q_sorted[3]) * (self.eps[2, 0] + self.Kx * q_sorted[3])))
+                    (self.eps[0, 2] + self.Kx * q_sorted[3]) * (self.eps[2, 0] + self.Kx * q_sorted[3])))
             gamma32 = - gamma30 * ((self.eps[2, 0] + self.Kx * q_sorted[3]) / (self.eps[2, 2] - self.Kx ** 2)) \
                       - (self.eps[2, 1] / (self.eps[2, 2] - self.Kx ** 2))
 
-        # Trick if it's nan (doesn't appear in Passler's main text, but appears in his code)
+        # Trick if it's nan (see Passler)
         # /!\ in Python, 0/0 = not a number, number/0 = sign(number)*Inf
         if np.isnan(gamma01) or np.isinf(gamma01) or gamma01 > 1e6:
             gamma01 = 0
@@ -592,7 +600,7 @@ class Layer(object):
         partial_waves_corrected = Wave.matrix_to_waves(p_corrected, self.eps, self.Kx)
         return p_corrected, partial_waves_corrected
 
-    def _calc_p_q_sorted(self):
+    def _calc_p_q_sorted(self, numerical_method="numpy"):
         r"""
         This function calculates the ``Layer``’s eigenvectors and eigenvalues and returns them sorted according to their
         drection of propagation and their polarisation.
@@ -611,25 +619,19 @@ class Layer(object):
         :return list partial_waves_sorted: list of 4 ``Waves`` corresponding to the eigenvectors ``p_sorted``
         """
         # Calculate unsorted
-        p_unsorted, q_unsorted, partial_waves_unsorted = self._calc_p_q_unsorted(method="numpy")
-        # Sort them according to Passler's procedure
+        p_unsorted, q_unsorted, partial_waves_unsorted = self._calc_p_q_unsorted(numerical_method=numerical_method)
+        # Sort them
         p_sorted, q_sorted, partial_waves_sorted = self._sort_p_q(p_unsorted, q_unsorted, partial_waves_unsorted)
+        # p_sorted, partial_waves_sorted = self._correct_p(q_sorted)  # not used here, but can be un-commented
         return p_sorted, q_sorted, partial_waves_sorted
 
     def build_P_Q(self):
         """
         This function constructs the interface matrix :math:`P` and the propagation matrix :math:`Q` for one ``Layer``.
 
-            - The interface matrix :math:`P` describes the change of medium. The interface matrix is called
-              :math:`K` by Kragt [Kragt2019]_, :math:`\Psi` by Berreman [Berreman1972]_, and :math:`A` by Passler [Passler2017]_. It is
-              built with the eigenvectors.
+            - The interface matrix :math:`P` describes the change of medium.
             - The propagation matrix :math:`Q` describes the propagation in the thickness of the medium and the phase
-              build-up. The propagation matrix is called :math:`P` by Kragt [Kragt2019]_, :math:`P` by Berreman [Berreman1972]_, and
-              :math:`P` by Passler [Passler2017]_. It is built with the eigenvalues.
-
-        .. [Passler2017] 10.1364/JOSAB.34.002128
-        .. [Berreman1972] 10.1364/JOSA.62.000502
-        .. [Kragt2019] 10.1002/adma.201903120
+              build-up.
 
         :return ndarray P: interface matrix :math:`P`, 3x3 Numpy array
         :return ndarray Q: propagation matrix :math:`Q`, 3x3 Numpy array
@@ -654,11 +656,13 @@ class HalfSpace(Layer):
                :math:`k_x = k_0 K_x`
     :param str category: always ``"isotropic"`` in the code’s 1.0 version
     """
-    #__doc__ += Layer.__doc__
+
+    # __doc__ += Layer.__doc__
     def __init__(self, epsilon, Kx, Kz, k0, category="isotropic"):
         if category == "isotropic":
             if epsilon[0, 0] == epsilon[1, 1] == epsilon[2, 2]:
-                if all(v == 0 for v in [epsilon[0, 1], epsilon[0, 2], epsilon[1, 0], epsilon[1, 2], epsilon[2, 0], epsilon[2, 1]]):
+                if all(v == 0 for v in
+                       [epsilon[0, 1], epsilon[0, 2], epsilon[1, 0], epsilon[1, 2], epsilon[2, 0], epsilon[2, 1]]):
                     valid = True
                 else:
                     valid = False
@@ -674,7 +678,7 @@ class HalfSpace(Layer):
         else:
             raise Exception("The permittivity of the HalfSpace does not correspond to its category.")
 
-    def _calc_p_q_sorted(self):
+    def _calc_p_q_sorted(self, numerical_method="analytical"):
         """
         This function calculates the ``HalfSpace``’s eigenvectors and eigenvalues analytically and returns them sorted.
 
@@ -691,10 +695,10 @@ class HalfSpace(Layer):
             cos_phi = np.sqrt(1 - sin_phi ** 2 + 0j)
             q_sorted = [n * cos_phi, n * cos_phi, -n * cos_phi, -n * cos_phi]
             p_sorted_mat = np.array([
-                [cos_phi,   0,              cos_phi,    0],
-                [n,         0,              -n,         0],
-                [0,         1,              0,          1],
-                [0,         n * cos_phi,    0,          -n * cos_phi]
+                [cos_phi, 0, cos_phi, 0],
+                [n, 0, -n, 0],
+                [0, 1, 0, 1],
+                [0, n * cos_phi, 0, -n * cos_phi]
             ])
             partial_waves_sorted = Wave.matrix_to_waves(p_sorted_mat, self.eps, self.Kx)
             return p_sorted_mat, q_sorted, partial_waves_sorted
@@ -729,23 +733,25 @@ class Structure(object):
                              K_y \\
                              K_z
                          \end{bmatrix}
-                    
+
                      which stays the same throughout the stack and depends on the wavelength
 
     :param int N_periods: the number of periods
 
     """
+
     def __init__(self, entry, exit, Kx, Ky, Kz_entry, Kz_exit, k0, N_periods=1):
         self.layers = []  # contains a list of objects Layer
         self.Kx = Kx  # kx = Kx * k0
         self.Ky = Ky  # ky = Ky * k0
         self.Kz_entry = Kz_entry  # kz_entry = Kz_entry * k0
-        self.Kz_exit = Kz_exit    # kz_exit = Kz_exit * k0
+        self.Kz_exit = Kz_exit  # kz_exit = Kz_exit * k0
         self.k0 = k0
         if Structure.is_layer_compatible(self, entry):
             self.entry = entry  # contains a layer object for isotropic medium
         else:
-            raise Exception("The entry half-space doesn't have the same Kx and k0 as the structure, it cannot be added.")
+            raise Exception(
+                "The entry half-space doesn't have the same Kx and k0 as the structure, it cannot be added.")
         if Structure.is_layer_compatible(self, exit):
             self.exit = exit  # contains a layer object for isotropic medium
         else:
@@ -782,7 +788,8 @@ class Structure(object):
         result = True
         sk = 0
         while result and sk < len(structures_list):
-            result = ((structures_list[sk].Kx == structures_list[0].Kx) and (structures_list[sk].k0 == structures_list[0].k0))
+            result = ((structures_list[sk].Kx == structures_list[0].Kx) and (
+                        structures_list[sk].k0 == structures_list[0].k0))
             sk = sk + 1
         return result
 
@@ -865,35 +872,35 @@ class Structure(object):
         :param ndarray layer_b: the second ``Layer``
         :return: partial scattering matrix from layer :math:`a` to layer :math:`b`, a 4x4 Numpy array
         """
-        Qmatp = np.array([
+        Q_forward = np.array([
             [layer_a.Q[0, 0], layer_a.Q[0, 1], 0, 0],
             [layer_a.Q[1, 0], layer_a.Q[1, 1], 0, 0],
             [0, 0, 1, 0],
             [0, 0, 0, 1]
         ])
 
-        Qmatm = np.array([
+        Q_backward = np.array([
             [1, 0, 0, 0],
             [0, 1, 0, 0],
             [0, 0, layer_a.Q[2, 2], layer_a.Q[2, 3]],
             [0, 0, layer_a.Q[3, 2], layer_a.Q[3, 3]]
         ])
 
-        Pmixright = np.array([
+        P_out = np.array([
             [layer_a.P[0, 0], layer_a.P[0, 1], -layer_b.P[0, 2], -layer_b.P[0, 3]],
             [layer_a.P[1, 0], layer_a.P[1, 1], -layer_b.P[1, 2], -layer_b.P[1, 3]],
             [layer_a.P[2, 0], layer_a.P[2, 1], -layer_b.P[2, 2], -layer_b.P[2, 3]],
             [layer_a.P[3, 0], layer_a.P[3, 1], -layer_b.P[3, 2], -layer_b.P[3, 3]]
         ])
 
-        Pmixleft = np.array([
+        P_in = np.array([
             [layer_b.P[0, 0], layer_b.P[0, 1], -layer_a.P[0, 2], -layer_a.P[0, 3]],
             [layer_b.P[1, 0], layer_b.P[1, 1], -layer_a.P[1, 2], -layer_a.P[1, 3]],
             [layer_b.P[2, 0], layer_b.P[2, 1], -layer_a.P[2, 2], -layer_a.P[2, 3]],
             [layer_b.P[3, 0], layer_b.P[3, 1], -layer_a.P[3, 2], -layer_a.P[3, 3]]
         ])
 
-        S12 = la_np.multi_dot((la_np.inv(Qmatm), la_np.inv(Pmixleft), Pmixright, Qmatp))
+        S12 = la_np.multi_dot((la_np.inv(Q_backward), la_np.inv(P_in), P_out, Q_forward))
         return S12
 
     @staticmethod
@@ -944,9 +951,6 @@ class Structure(object):
         S_ac01 = S_bc01 + la_np.multi_dot((S_bc00, C, S_ab01, S_bc11))
         S_ac10 = S_ab10 + la_np.multi_dot((S_ab11, S_bc10, C, S_ab00))
         S_ac11 = la_np.multi_dot((S_ab11, (np.identity(2) + la_np.multi_dot((S_bc10, C, S_ab01))), S_bc11))
-        #S_ac = np.concatenate((np.concatenate((S_ac00, S_ac01), axis=1),
-        #                       np.concatenate((S_ac10, S_ac11), axis=1)),
-        #                       axis=0)
 
         S_ac = np.array([
             [S_ac00[0, 0], S_ac00[0, 1], S_ac01[0, 0], S_ac01[0, 1]],
@@ -1002,6 +1006,7 @@ class Structure(object):
 
         :return: transfer matrix, a 4x4 Numpy array
         """
+        # Note: the commented lines help to verify
         N_layers = len(self.layers)
         T_period = np.identity(4)
         for kl in range(0, N_layers, 1):
@@ -1026,13 +1031,13 @@ class Structure(object):
             # print(decomp_powers)
             # print('---')
             for kp in decomp_powers[0:]:
-                #T = np.dot(T, decomp_matrices[kp])
+                # T = np.dot(T, decomp_matrices[kp])
                 T = np.dot(decomp_matrices[kp], T)
                 # test = test + 2**kp
             # print(test)
         elif self.N_periods == 2:
             T = T_period.copy()
-            #T = np.dot(T, T_period)
+            # T = np.dot(T, T_period)
             T = np.dot(T_period, T)
         else:
             T = T_period.copy()
@@ -1172,7 +1177,6 @@ class Structure(object):
 
         :return: scattering matrix, a 4x4 Numpy array
         """
-        # TODO: rephrase the exceptions
         if len(struct_list) == 1:
             S = struct_list[0].build_scattering_matrix()
         else:
@@ -1206,7 +1210,7 @@ class Structure(object):
                 else:
                     raise Exception("The structures are not compatible.")
             else:
-                raise Exception("The entry and/or exit inputs are not HalfSpaces.")
+                raise Exception("The entry and/or exit Layers are not HalfSpaces.")
         return S
 
     def get_refl_trans(self, circ=False, method="SM"):
@@ -1222,22 +1226,41 @@ class Structure(object):
                               - ``"TM"`` for the transfer matrix method with the eigenvectors and eigenvalues
                               - ``"EM"`` for the transfer matrix method with the direct exponential of Berreman’s matrix
 
-        :return: 2x2 Numpy array whose values correspond to:
+        :return: reflectance: 2x2 Numpy array whose values correspond to:
 
                      - in the linear polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 R_{p \: \text{to} \: p} & R_{p \: \text{to} \: s} \\
-                                 R_{s \: \text{to} \: p} & R_{s \: \text{to} \: s}
+                                 R_{p \: \text{to} \: p} & R_{s \: \text{to} \: p} \\
+                                 R_{p \: \text{to} \: s} & R_{s \: \text{to} \: s}
                              \end{bmatrix}
 
-                     - in the circular polarisation basis (``circ=False``):
+                    - in the circular polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 R_{RCP \: \text{to} \: RCP} & R_{RCP \: \text{to} \: LCP} \\
-                                 R_{LCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: LCP}
+                                 R_{RCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: RCP} \\
+                                 R_{RCP \: \text{to} \: LCP} & R_{LCP \: \text{to} \: LCP}
+                             \end{bmatrix}
+
+
+        :return: transmittance: 2x2 Numpy array whose values correspond to:
+
+                     - in the linear polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 T_{p \: \text{to} \: p} & T_{s \: \text{to} \: p} \\
+                                 T_{p \: \text{to} \: s} & T_{s \: \text{to} \: s}
+                             \end{bmatrix}
+
+                    - in the circular polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 T_{RCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: RCP} \\
+                                 T_{RCP \: \text{to} \: LCP} & T_{LCP \: \text{to} \: LCP}
                              \end{bmatrix}
 
         """
@@ -1324,16 +1347,16 @@ class Structure(object):
 
                      .. math::
                          \begin{bmatrix}
-                             r_{p \: \text{to} \: p} & r_{p \: \text{to} \: s} \\
-                             r_{s \: \text{to} \: p} & r_{s \: \text{to} \: s}
+                             r_{p \: \text{to} \: p} & r_{s \: \text{to} \: p} \\
+                             r_{p \: \text{to} \: s} & r_{s \: \text{to} \: s}
                          \end{bmatrix}
 
         :return J_trans: 2x2 Numpy array whose values correspond to:
 
                      .. math::
                          \begin{bmatrix}
-                             t_{p \: \text{to} \: p} & t_{p \: \text{to} \: s} \\
-                             t_{s \: \text{to} \: p} & t_{s \: \text{to} \: s}
+                             t_{p \: \text{to} \: p} & t_{s \: \text{to} \: p} \\
+                             t_{p \: \text{to} \: s} & t_{s \: \text{to} \: s}
                          \end{bmatrix}
         """
         if method == "SM":
@@ -1354,13 +1377,13 @@ class Structure(object):
         SM = self.build_scattering_matrix()
 
         J_refl = np.array([
-            [SM[2, 0], SM[3, 0]],
-            [SM[2, 1], SM[3, 1]]
+            [SM[2, 0], SM[2, 1]],
+            [SM[3, 0], SM[3, 1]]
         ])
 
         J_trans = np.array([
-            [SM[0, 0], SM[1, 0]],
-            [SM[0, 1], SM[1, 1]]
+            [SM[0, 0], SM[0, 1]],
+            [SM[1, 0], SM[1, 1]]
         ])
         return J_refl, J_trans
 
@@ -1372,23 +1395,23 @@ class Structure(object):
         TM = self.build_transfer_matrix()
 
         deno = TM[2, 2] * TM[3, 3] - TM[3, 2] * TM[2, 3]
-        r_pp = (TM[3, 0] * TM[2, 3] - TM[2, 0] * TM[3, 3]) / deno
-        r_ps = (TM[2, 0] * TM[3, 2] - TM[3, 0] * TM[2, 2]) / deno
-        r_sp = (TM[3, 1] * TM[2, 3] - TM[2, 1] * TM[3, 3]) / deno
-        r_ss = (TM[2, 1] * TM[3, 2] - TM[3, 1] * TM[2, 2]) / deno
-        t_pp = TM[0, 0] + TM[0, 2] * r_pp + TM[0, 3] * r_ps
-        t_ps = TM[1, 0] + TM[1, 2] * r_pp + TM[1, 3] * r_ps
-        t_sp = TM[0, 1] + TM[0, 2] * r_sp + TM[0, 3] * r_ss
-        t_ss = TM[1, 1] + TM[1, 2] * r_sp + TM[1, 3] * r_ss
+        r_p_to_p = (TM[3, 0] * TM[2, 3] - TM[2, 0] * TM[3, 3]) / deno
+        r_p_to_s = (TM[2, 0] * TM[3, 2] - TM[3, 0] * TM[2, 2]) / deno
+        r_s_to_p = (TM[3, 1] * TM[2, 3] - TM[2, 1] * TM[3, 3]) / deno
+        r_s_to_s = (TM[2, 1] * TM[3, 2] - TM[3, 1] * TM[2, 2]) / deno
+        t_p_to_p = TM[0, 0] + TM[0, 2] * r_p_to_p + TM[0, 3] * r_p_to_s
+        t_p_to_s = TM[1, 0] + TM[1, 2] * r_p_to_p + TM[1, 3] * r_p_to_s
+        t_s_to_p = TM[0, 1] + TM[0, 2] * r_s_to_p + TM[0, 3] * r_s_to_s
+        t_s_to_s = TM[1, 1] + TM[1, 2] * r_s_to_p + TM[1, 3] * r_s_to_s
 
         J_refl = np.array([
-            [r_pp, r_ps],
-            [r_sp, r_ss]
+            [r_p_to_p, r_s_to_p],
+            [r_p_to_s, r_s_to_s]
         ])
 
         J_trans = np.array([
-            [t_pp, t_ps],
-            [t_sp, t_ss]
+            [t_p_to_p, t_s_to_p],
+            [t_p_to_s, t_s_to_s]
         ])
         return J_refl, J_trans
 
@@ -1401,23 +1424,23 @@ class Structure(object):
         EM = self.build_exponential_matrix()
 
         deno = EM[2, 2] * EM[3, 3] - EM[3, 2] * EM[2, 3]
-        r_pp = (EM[3, 0] * EM[2, 3] - EM[2, 0] * EM[3, 3]) / deno
-        r_ps = (EM[2, 0] * EM[3, 2] - EM[3, 0] * EM[2, 2]) / deno
-        r_sp = (EM[3, 1] * EM[2, 3] - EM[2, 1] * EM[3, 3]) / deno
-        r_ss = (EM[2, 1] * EM[3, 2] - EM[3, 1] * EM[2, 2]) / deno
-        t_pp = EM[0, 0] + EM[0, 2] * r_pp + EM[0, 3] * r_ps
-        t_ps = EM[1, 0] + EM[1, 2] * r_pp + EM[1, 3] * r_ps
-        t_sp = EM[0, 1] + EM[0, 2] * r_sp + EM[0, 3] * r_ss
-        t_ss = EM[1, 1] + EM[1, 2] * r_sp + EM[1, 3] * r_ss
+        r_p_to_p = (EM[3, 0] * EM[2, 3] - EM[2, 0] * EM[3, 3]) / deno
+        r_p_to_s = (EM[2, 0] * EM[3, 2] - EM[3, 0] * EM[2, 2]) / deno
+        r_s_to_p = (EM[3, 1] * EM[2, 3] - EM[2, 1] * EM[3, 3]) / deno
+        r_s_to_s = (EM[2, 1] * EM[3, 2] - EM[3, 1] * EM[2, 2]) / deno
+        t_p_to_p = EM[0, 0] + EM[0, 2] * r_p_to_p + EM[0, 3] * r_p_to_s
+        t_p_to_s = EM[1, 0] + EM[1, 2] * r_p_to_p + EM[1, 3] * r_p_to_s
+        t_s_to_p = EM[0, 1] + EM[0, 2] * r_s_to_p + EM[0, 3] * r_s_to_s
+        t_s_to_s = EM[1, 1] + EM[1, 2] * r_s_to_p + EM[1, 3] * r_s_to_s
 
         J_refl = np.array([
-            [r_pp, r_ps],
-            [r_sp, r_ss]
+            [r_p_to_p, r_s_to_p],
+            [r_p_to_s, r_s_to_s]
         ])
 
         J_trans = np.array([
-            [t_pp, t_ps],
-            [t_sp, t_ss]
+            [t_p_to_p, t_s_to_p],
+            [t_p_to_s, t_s_to_s]
         ])
         return J_refl, J_trans
 
@@ -1427,28 +1450,36 @@ class Structure(object):
         This function converts reflection and transmission coefficients in the linear polarisation basis to reflection
         and transmission coefficients in the circular polarisation bases.
 
-        :param ndarray J: 2x2 Numpy array whose values correspond to:
+        :param ndarray J_refl: 2x2 Numpy array whose values correspond to:
 
                      .. math::
                          \begin{bmatrix}
-                             r_{p \: \text{to} \: p} & r_{p \: \text{to} \: s} \\
-                             r_{s \: \text{to} \: p} & r_{s \: \text{to} \: s}
+                             r_{p \: \text{to} \: p} & r_{s \: \text{to} \: p} \\
+                             r_{p \: \text{to} \: s} & r_{s \: \text{to} \: s}
+                         \end{bmatrix}
+
+        :param ndarray J_trans: 2x2 Numpy array whose values correspond to:
+
+                     .. math::
+                         \begin{bmatrix}
+                             t_{p \: \text{to} \: p} & t_{s \: \text{to} \: p} \\
+                             t_{p \: \text{to} \: s} & t_{s \: \text{to} \: s}
                          \end{bmatrix}
 
         :return J_refl_c: 2x2 Numpy array whose values correspond to:
 
                      .. math::
                          \begin{bmatrix}
-                             r_{RCP \: \text{to} \: RCP} & r_{RCP \: \text{to} \: LCP} \\
-                             r_{LCP \: \text{to} \: RCP} & r_{LCP \: \text{to} \: LCP}
+                             r_{RCP \: \text{to} \: RCP} & r_{LCP \: \text{to} \: RCP} \\
+                             r_{RCP \: \text{to} \: LCP} & r_{LCP \: \text{to} \: LCP}
                          \end{bmatrix}
 
         :return J_trans_c: 2x2 Numpy array whose values correspond to:
 
                      .. math::
                          \begin{bmatrix}
-                             t_{RCP \: \text{to} \: RCP} & t_{RCP \: \text{to} \: LCP} \\
-                             t_{LCP \: \text{to} \: RCP} & t_{LCP \: \text{to} \: LCP}
+                             t_{RCP \: \text{to} \: RCP} & t_{LCP \: \text{to} \: RCP} \\
+                             t_{RCP \: \text{to} \: LCP} & t_{LCP \: \text{to} \: LCP}
                          \end{bmatrix}
         """
         F = np.array([
@@ -1460,7 +1491,7 @@ class Structure(object):
             [1j, -1j]
         ])
         J_refl_c = la_np.multi_dot((la_np.inv(B), J_refl, F))
-        J_trans_c = la_np.multi_dot((la_np.inv(B), J_trans, B))
+        J_trans_c = la_np.multi_dot((la_np.inv(F), J_trans, F))
         return J_refl_c, J_trans_c
 
     @staticmethod
@@ -1483,16 +1514,16 @@ class Structure(object):
 
                      .. math::
                          \begin{bmatrix}
-                             r_{p \: \text{to} \: p} & r_{p \: \text{to} \: s} \\
-                             r_{s \: \text{to} \: p} & r_{s \: \text{to} \: s}
+                             r_{p \: \text{to} \: p} & r_{s \: \text{to} \: p} \\
+                             r_{p \: \text{to} \: s} & r_{s \: \text{to} \: s}
                          \end{bmatrix}
 
         :return J_trans: 2x2 Numpy array whose values correspond to:
 
                      .. math::
                          \begin{bmatrix}
-                             t_{p \: \text{to} \: p} & t_{p \: \text{to} \: s} \\
-                             t_{s \: \text{to} \: p} & t_{s \: \text{to} \: s}
+                             t_{p \: \text{to} \: p} & t_{s \: \text{to} \: p} \\
+                             t_{p \: \text{to} \: s} & t_{s \: \text{to} \: s}
                          \end{bmatrix}
         """
         if method == "SM":
@@ -1513,13 +1544,13 @@ class Structure(object):
         """
         SM = Structure.build_scattering_matrix_multi(structures_list, entry, exit)
         J_refl = np.array([
-            [SM[2, 0], SM[3, 0]],
-            [SM[2, 1], SM[3, 1]]
+            [SM[2, 0], SM[2, 1]],
+            [SM[3, 0], SM[3, 1]]
         ])
 
         J_trans = np.array([
-            [SM[0, 0], SM[1, 0]],
-            [SM[0, 1], SM[1, 1]]
+            [SM[0, 0], SM[0, 1]],
+            [SM[1, 0], SM[1, 1]]
         ])
         return J_refl, J_trans
 
@@ -1532,23 +1563,23 @@ class Structure(object):
         """
         TM = Structure.build_transfer_matrix_multi(structures_list, entry, exit)
         deno = TM[2, 2] * TM[3, 3] - TM[3, 2] * TM[2, 3]
-        r_pp = (TM[3, 0] * TM[2, 3] - TM[2, 0] * TM[3, 3]) / deno
-        r_ps = (TM[2, 0] * TM[3, 2] - TM[3, 0] * TM[2, 2]) / deno
-        r_sp = (TM[3, 1] * TM[2, 3] - TM[2, 1] * TM[3, 3]) / deno
-        r_ss = (TM[2, 1] * TM[3, 2] - TM[3, 1] * TM[2, 2]) / deno
-        t_pp = TM[0, 0] + TM[0, 2] * r_pp + TM[0, 3] * r_ps
-        t_ps = TM[1, 0] + TM[1, 2] * r_pp + TM[1, 3] * r_ps
-        t_sp = TM[0, 1] + TM[0, 2] * r_sp + TM[0, 3] * r_ss
-        t_ss = TM[1, 1] + TM[1, 2] * r_sp + TM[1, 3] * r_ss
+        r_p_to_p = (TM[3, 0] * TM[2, 3] - TM[2, 0] * TM[3, 3]) / deno
+        r_p_to_s = (TM[2, 0] * TM[3, 2] - TM[3, 0] * TM[2, 2]) / deno
+        r_s_to_p = (TM[3, 1] * TM[2, 3] - TM[2, 1] * TM[3, 3]) / deno
+        r_s_to_s = (TM[2, 1] * TM[3, 2] - TM[3, 1] * TM[2, 2]) / deno
+        t_p_to_p = TM[0, 0] + TM[0, 2] * r_p_to_p + TM[0, 3] * r_p_to_s
+        t_p_to_s = TM[1, 0] + TM[1, 2] * r_p_to_p + TM[1, 3] * r_p_to_s
+        t_s_to_p = TM[0, 1] + TM[0, 2] * r_s_to_p + TM[0, 3] * r_s_to_s
+        t_s_to_s = TM[1, 1] + TM[1, 2] * r_s_to_p + TM[1, 3] * r_s_to_s
 
         J_refl = np.array([
-            [r_pp, r_ps],
-            [r_sp, r_ss]
+            [r_p_to_p, r_s_to_p],
+            [r_p_to_s, r_s_to_s]
         ])
 
         J_trans = np.array([
-            [t_pp, t_ps],
-            [t_sp, t_ss]
+            [t_p_to_p, t_s_to_p],
+            [t_p_to_s, t_s_to_s]
         ])
         return J_refl, J_trans
 
@@ -1561,23 +1592,23 @@ class Structure(object):
         """
         EM = Structure.build_exponential_matrix_multi(structures_list, entry, exit)
         deno = EM[2, 2] * EM[3, 3] - EM[3, 2] * EM[2, 3]
-        r_pp = (EM[3, 0] * EM[2, 3] - EM[2, 0] * EM[3, 3]) / deno
-        r_ps = (EM[2, 0] * EM[3, 2] - EM[3, 0] * EM[2, 2]) / deno
-        r_sp = (EM[3, 1] * EM[2, 3] - EM[2, 1] * EM[3, 3]) / deno
-        r_ss = (EM[2, 1] * EM[3, 2] - EM[3, 1] * EM[2, 2]) / deno
-        t_pp = EM[0, 0] + EM[0, 2] * r_pp + EM[0, 3] * r_ps
-        t_ps = EM[1, 0] + EM[1, 2] * r_pp + EM[1, 3] * r_ps
-        t_sp = EM[0, 1] + EM[0, 2] * r_sp + EM[0, 3] * r_ss
-        t_ss = EM[1, 1] + EM[1, 2] * r_sp + EM[1, 3] * r_ss
+        r_p_to_p = (EM[3, 0] * EM[2, 3] - EM[2, 0] * EM[3, 3]) / deno
+        r_p_to_s = (EM[2, 0] * EM[3, 2] - EM[3, 0] * EM[2, 2]) / deno
+        r_s_to_p = (EM[3, 1] * EM[2, 3] - EM[2, 1] * EM[3, 3]) / deno
+        r_s_to_s = (EM[2, 1] * EM[3, 2] - EM[3, 1] * EM[2, 2]) / deno
+        t_p_to_p = EM[0, 0] + EM[0, 2] * r_p_to_p + EM[0, 3] * r_p_to_s
+        t_p_to_s = EM[1, 0] + EM[1, 2] * r_p_to_p + EM[1, 3] * r_p_to_s
+        t_s_to_p = EM[0, 1] + EM[0, 2] * r_s_to_p + EM[0, 3] * r_s_to_s
+        t_s_to_s = EM[1, 1] + EM[1, 2] * r_s_to_p + EM[1, 3] * r_s_to_s
 
         J_refl = np.array([
-            [r_pp, r_ps],
-            [r_sp, r_ss]
+            [r_p_to_p, r_s_to_p],
+            [r_p_to_s, r_s_to_s]
         ])
 
         J_trans = np.array([
-            [t_pp, t_ps],
-            [t_sp, t_ss]
+            [t_p_to_p, t_s_to_p],
+            [t_p_to_s, t_s_to_s]
         ])
         return J_refl, J_trans
 
@@ -1599,40 +1630,41 @@ class Structure(object):
                               - ``"TM"`` for the transfer matrix method with the eigenvectors and eigenvalues
                               - ``"EM"`` for the transfer matrix method with the direct exponential of Berreman’s matrix
 
-        :return reflectance: 2x2 Numpy array whose values correspond to:
+        :return: reflectance: 2x2 Numpy array whose values correspond to:
 
                      - in the linear polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 R_{p \: \text{to} \: p} & R_{p \: \text{to} \: s} \\
-                                 R_{s \: \text{to} \: p} & R_{s \: \text{to} \: s}
+                                 R_{p \: \text{to} \: p} & R_{s \: \text{to} \: p} \\
+                                 R_{p \: \text{to} \: s} & R_{s \: \text{to} \: s}
                              \end{bmatrix}
 
-                     - in the circular polarisation basis (``circ=False``):
+                    - in the circular polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 R_{RCP \: \text{to} \: RCP} & R_{RCP \: \text{to} \: LCP} \\
-                                 R_{LCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: LCP}
+                                 R_{RCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: RCP} \\
+                                 R_{RCP \: \text{to} \: LCP} & R_{LCP \: \text{to} \: LCP}
                              \end{bmatrix}
 
-        :return transmittance: 2x2 Numpy array whose values correspond to:
+
+        :return: transmittance: 2x2 Numpy array whose values correspond to:
 
                      - in the linear polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 T_{p \: \text{to} \: p} & T_{p \: \text{to} \: s} \\
-                                 T_{s \: \text{to} \: p} & T_{s \: \text{to} \: s}
+                                 T_{p \: \text{to} \: p} & T_{s \: \text{to} \: p} \\
+                                 T_{p \: \text{to} \: s} & T_{s \: \text{to} \: s}
                              \end{bmatrix}
 
-                     - in the circular polarisation basis (``circ=False``):
+                    - in the circular polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 T_{RCP \: \text{to} \: RCP} & T_{RCP \: \text{to} \: LCP} \\
-                                 T_{LCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: LCP}
+                                 T_{RCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: RCP} \\
+                                 T_{RCP \: \text{to} \: LCP} & T_{LCP \: \text{to} \: LCP}
                              \end{bmatrix}
         """
         if method == "SM":
@@ -1719,6 +1751,7 @@ class Model(object):
     :param float wl_nm: the wavelength in nanometers
     :param float theta_in_rad: the angle of incidence in radians
     """
+
     # All common parameters initialised here
     # Children can call the parent's __init__ with super().__init__
     def __init__(self, n_entry, n_exit, wl_nm, theta_in_rad):
@@ -1726,7 +1759,24 @@ class Model(object):
         self.n_exit = n_exit
         self.wl = wl_nm
         self.theta_in = theta_in_rad
-        theta_out = np.arcsin((n_entry / n_exit) * np.sin(self.theta_in))
+        theta_out = np.arcsin((n_entry / n_exit) * np.sin(self.theta_in + 0j))
+        self.k0 = 2 * np.pi / self.wl
+        self.Kx = self.n_entry * np.sin(self.theta_in)  # kx = Kx * k0
+        self.Ky = 0  # ky = Ky * k0
+        self.Kz_entry = self.n_entry * np.cos(self.theta_in)  # kz = Kz_entry * k0
+        self.Kz_exit = self.n_exit * np.cos(theta_out)  # kz = Kz_entry * k0
+        self.structure = self._build_structure_total()
+        # When using super().__init__ in children classes, it's going to call the "_build_structure_total" method in the
+        # parent class, which then will call both the "_build_structure" method of each child (as each child has a
+        # "_build_structure" method that overrides the parent one), and "_build_entry_exit" of the parent (since it's not
+        # overridden by a child version).
+
+    def init_old(self, n_entry, n_exit, wl_nm, theta_in_rad):
+        self.n_entry = n_entry
+        self.n_exit = n_exit
+        self.wl = wl_nm
+        self.theta_in = theta_in_rad
+        theta_out = np.arcsin((n_entry / n_exit) * np.sin(self.theta_in))  # theta_in + 0j
         self.k0 = 2 * np.pi / self.wl
         self.Kx = self.n_entry * np.sin(self.theta_in)  # kx = Kx * k0
         self.Ky = 0  # ky = Ky * k0
@@ -1783,10 +1833,24 @@ class Model(object):
         :return: a ``Structure``
         """
         warnings.warn("The build_function method of the Model class is used.")
-        return Structure(entry=entry_space, exit=exit_space, Kx=self.Kx, Ky=self.Ky, Kz_entry=self.Kz_entry, Kz_exit=self.Kz_exit, k0=self.k0,
+        return Structure(entry=entry_space, exit=exit_space, Kx=self.Kx, Ky=self.Ky, Kz_entry=self.Kz_entry,
+                         Kz_exit=self.Kz_exit, k0=self.k0,
                          N_periods=1)
 
     def _build_entry_exit(self):
+        """
+        This function creates the entry and exit ``HalfSpaces``. The children classes of ``Model`` use this parent
+        function, unless they redefine it.
+
+        :return: two ``HalfSpace`` objects for the isotropic entry and exit ``HalfSpaces``
+        """
+        epsilon_entry = np.array([[self.n_entry ** 2, 0, 0], [0, self.n_entry ** 2, 0], [0, 0, self.n_entry ** 2]])
+        epsilon_exit = np.array([[self.n_exit ** 2, 0, 0], [0, self.n_exit ** 2, 0], [0, 0, self.n_exit ** 2]])
+        entry_space = HalfSpace(epsilon_entry, self.Kx, self.Kz_entry, self.k0, category="isotropic")
+        exit_space = HalfSpace(epsilon_exit, self.Kx, self.Kz_exit, self.k0, category="isotropic")
+        return entry_space, exit_space
+
+    def _build_entry_exit_old(self):
         """
         This function creates the entry and exit ``HalfSpaces``. The children classes of ``Model`` use this parent
         function, unless they redefine it.
@@ -1813,22 +1877,41 @@ class Model(object):
                               - ``"TM"`` for the transfer matrix method with the eigenvectors and eigenvalues
                               - ``"EM"`` for the transfer matrix method with the direct exponential of Berreman’s matrix
 
-        :return: 2x2 Numpy array whose values correspond to:
+        :return: reflectance: 2x2 Numpy array whose values correspond to:
 
                      - in the linear polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 R_{p \: \text{to} \: p} & R_{p \: \text{to} \: s} \\
-                                 R_{s \: \text{to} \: p} & R_{s \: \text{to} \: s}
+                                 R_{p \: \text{to} \: p} & R_{s \: \text{to} \: p} \\
+                                 R_{p \: \text{to} \: s} & R_{s \: \text{to} \: s}
                              \end{bmatrix}
 
-                     - in the circular polarisation basis (``circ=False``):
+                    - in the circular polarisation basis (``circ=False``):
 
                          .. math::
                              \begin{bmatrix}
-                                 R_{RCP \: \text{to} \: RCP} & R_{RCP \: \text{to} \: LCP} \\
-                                 R_{LCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: LCP}
+                                 R_{RCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: RCP} \\
+                                 R_{RCP \: \text{to} \: LCP} & R_{LCP \: \text{to} \: LCP}
+                             \end{bmatrix}
+
+
+        :return: transmittance: 2x2 Numpy array whose values correspond to:
+
+                     - in the linear polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 T_{p \: \text{to} \: p} & T_{s \: \text{to} \: p} \\
+                                 T_{p \: \text{to} \: s} & T_{s \: \text{to} \: s}
+                             \end{bmatrix}
+
+                    - in the circular polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 T_{RCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: RCP} \\
+                                 T_{RCP \: \text{to} \: LCP} & T_{LCP \: \text{to} \: LCP}
                              \end{bmatrix}
 
         """
@@ -1848,7 +1931,7 @@ class MixedModel(Model):
     :param float wl_nm: the wavelength in nanometers
     :param float theta_in_rad: the angle of incidence in radians
     """
-    # TODO pair MixedModel with Spectrum!!!!
+
     def __init__(self, models_list, n_entry, n_exit, wl_nm, theta_in_rad):
         super().__init__(n_entry, n_exit, wl_nm, theta_in_rad)
         compatible_models = []
@@ -1875,11 +1958,14 @@ class MixedModel(Model):
 
     def get_refl_trans(self, circ=False, method="SM"):
         if method == "SM":
-            reflectance, transmittance = Structure._get_refl_trans_multi_SM(self.structures_list, self.structure.entry, self.structure.exit, circ=circ)
+            reflectance, transmittance = Structure._get_refl_trans_multi_SM(self.structures_list, self.structure.entry,
+                                                                            self.structure.exit, circ=circ)
         elif method == "TM":
-            reflectance, transmittance = Structure._get_refl_trans_multi_TM(self.structures_list, self.structure.entry, self.structure.exit, circ=circ)
+            reflectance, transmittance = Structure._get_refl_trans_multi_TM(self.structures_list, self.structure.entry,
+                                                                            self.structure.exit, circ=circ)
         elif method == "EM":
-            reflectance, transmittance = Structure._get_refl_trans_multi_EM(self.structures_list, self.structure.entry, self.structure.exit, circ=circ)
+            reflectance, transmittance = Structure._get_refl_trans_multi_EM(self.structures_list, self.structure.entry,
+                                                                            self.structure.exit, circ=circ)
         else:
             raise Exception('Invalid method (only SM, TM and EM allowed).')
         return reflectance, transmittance
@@ -1899,6 +1985,7 @@ class CholestericModel(Model):
     :param float wl_nm: the wavelength in nanometers
     :param float theta_in_rad: the angle of incidence in radians
     """
+
     def __init__(self, chole, n_e, n_o, n_entry, n_exit, wl_nm, N_per, theta_in_rad):
         self.cholesteric = chole
         theta_in_rad_eff = theta_in_rad - chole.tilt
@@ -1914,7 +2001,8 @@ class CholestericModel(Model):
         See ``Model.build_structure()`` for more information.
         """
         # Create an empty structure between isotropic half spaces
-        chole_structure = Structure(entry_space, exit_space, self.Kx, self.Ky, self.Kz_entry, self.Kz_exit, self.k0, self.N_per)
+        chole_structure = Structure(entry_space, exit_space, self.Kx, self.Ky, self.Kz_entry, self.Kz_exit, self.k0,
+                                    self.N_per)
 
         # Retrieve permittivity tensor for the first (not rotated) layer
         eps0 = np.array([[self.n_e ** 2, 0, 0],
@@ -1941,21 +2029,6 @@ class CholestericModel(Model):
         return chole_structure
 
 
-class CholestericRandomBirefModel(Model):
-    # TODO remove this before publishing the code!!!
-    def __init__(self, chole, n_av, biref, perturbations, n_entry, n_exit, wl_nm, N_hel360, theta_in_rad):
-        self.cholesteric = chole
-        theta_in_rad_eff = theta_in_rad - chole.__tilt
-        self.n_av = n_av
-        self.biref = biref
-        self.pert = perturbations
-        self.N_hel = N_hel360
-        super().__init__(n_entry, n_exit, wl_nm, theta_in_rad_eff)
-
-    def _build_structure(self, entry_space, exit_space):
-        pass
-
-
 class SlabModel(Model):
     """
     This class represents a homogeneous slab of arbitrary permittivity.
@@ -1969,6 +2042,7 @@ class SlabModel(Model):
     :param float rotangle_rad: the rotation angle to apply to the permittivity tensor, in radians
     :param ndarray rotaxis: the rotation axis, a one-dimensional Numpy array of length 3 (or the string ``'x'``, ``'y'`` or ``'z'``)
     """
+
     def __init__(self, eps, thickness_nm, n_entry, n_exit, wl_nm, theta_in_rad, rotangle_rad=0, rotaxis='z'):
         if rotangle_rad != 0:
             eps = Layer.rotate_permittivity(eps, rotangle_rad, rotaxis)
@@ -2004,6 +2078,7 @@ class StackModel(Model):
     :param float theta_in_rad: the angle of incidence in radians
     :param int N_per: the number of periods
     """
+
     def __init__(self, eps_list, thickness_nm_list, n_entry, n_exit, wl_nm, theta_in_rad, N_per=1):
         if len(eps_list) != len(thickness_nm_list):
             raise Exception('The lists of permittivities and thicknesses must have the same length.')
@@ -2019,7 +2094,8 @@ class StackModel(Model):
         See ``Model.build_structure()`` for more information.
         """
         # Create an empty structure between isotropic half spaces
-        stack_structure = Structure(entry_space, exit_space, self.Kx, self.Ky, self.Kz_entry, self.Kz_exit, self.k0, self.N_per)
+        stack_structure = Structure(entry_space, exit_space, self.Kx, self.Ky, self.Kz_entry, self.Kz_exit, self.k0,
+                                    self.N_per)
 
         # Create the stack Layers
         for k in range(len(self.eps_list)):
@@ -2034,7 +2110,6 @@ class StackModel(Model):
 
         :param int new_N_per: new number of periods
         """
-        # TODO getter and setter for N_per
         self.N_per = new_N_per
         self.structure.N_periods = new_N_per
 
@@ -2098,7 +2173,7 @@ class StackModel(Model):
 
     def extract_stack(self, index_first_layer, index_last_layer):
         """
-        This function extracts a sub-stack from the ``StackModel``.
+        This function extracts a sub-stack from the ``StackModel`` (and return a new instance of ``StackModel``).
 
         :param index_first_layer: index of the first ``Layer``
         :param index_last_layer: index of the last ``Layer`` to extract + 1 (if ``index_first_layer = index_last_layer``, the
@@ -2123,6 +2198,7 @@ class StackOpticalThicknessModel(Model):
     :param float theta_in_rad: the angle of incidence in radians
     :param int N_per: the number of periods
     """
+
     def __init__(self, n_list, total_thickness_nm, n_entry, n_exit, wl_nm, theta_in_rad, N_per=1):
         self.n_list = n_list
         self.L = total_thickness_nm
@@ -2137,7 +2213,8 @@ class StackOpticalThicknessModel(Model):
         See ``Model.build_structure()`` for more information.
         """
         # Create an empty structure between isotropic half spaces
-        stack_structure = Structure(entry_space, exit_space, self.Kx, self.Ky, self.Kz_entry, self.Kz_exit, self.k0, self.N_per)
+        stack_structure = Structure(entry_space, exit_space, self.Kx, self.Ky, self.Kz_entry, self.Kz_exit, self.k0,
+                                    self.N_per)
 
         eps_list = [np.array([[ni ** 2, 0, 0], [0, ni ** 2, 0], [0, 0, ni ** 2]]) for ni in self.n_list]
 
@@ -2163,7 +2240,7 @@ class Spectrum(object):
     initially-empty dictionary ``Spectrum.data`` that will be filled with the calculated reflection spectra and additional data.
 
     :param ndarray wl_nm_list: a list (or array or range) of wavelengths (integers or floats), for example ``range(400, 800)``
-    :param string model_type: the name of the model to use:
+    :param string model_type: the name of the model to use. These include:
 
         - ``"CholestericModel"``
         - ``"SlabModel"``
@@ -2171,8 +2248,9 @@ class Spectrum(object):
         - ``"StackOpticalThicknessModel"``
 
     :param dict model_parameters: a dictionary containing the list of parameters required to create the chosen ``Model``,
-    except the wavelength. See the chosen ``Model``’s documentation.
+    except the wavelength. See the chosen ``Model``’s documentation to know how to construct the dictionary.
     """
+
     def __init__(self, wl_nm_list, model_type, model_parameters):
         self.wl_list = wl_nm_list  # list of wavelengths in nm
         self.mo_type = model_type  # name of model (cholesteric, slab, stack...)
@@ -2252,9 +2330,9 @@ class Spectrum(object):
                                                    wl,
                                                    model_parameters['theta_in_rad'],
                                                    model_parameters['N_per'])
-
-        # elif self.motype == "SomethingElse":
-        #    raise NotImplementedError("The Spectrum calculation has not been implemented for SomethingElse yet.")
+        # Add your new Model here
+        # elif self.motype == "YourNewModel":
+        #    raise NotImplementedError("The Spectrum calculation has not been implemented for YourNewModel yet.")
         else:
             raise Exception('Invalid model type.')
         return new_model
@@ -2267,19 +2345,19 @@ class Spectrum(object):
 
         - in the linear polarisation basis (``circ=False``):
 
-            - ``Spectrum.data["R_pp"]``: reflection spectrum for incoming :math:`p`-polarisation to outgoing :math:`p`-polarisation, 1d Numpy array
-            - ``Spectrum.data["R_ps"]``: reflection spectrum for incoming :math:`p`-polarisation to outgoing :math:`s`-polarisation, 1d Numpy array
-            - ``Spectrum.data["R_sp"]``: reflection spectrum for incoming :math:`s`-polarisation to outgoing :math:`p`-polarisation, 1d Numpy array
-            - ``Spectrum.data["R_ss"]``: reflection spectrum for incoming :math:`s`-polarisation to outgoing :math:`s`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_p_to_p"]``: reflection spectrum for incoming :math:`p`-polarisation to outgoing :math:`p`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_p_to_s"]``: reflection spectrum for incoming :math:`p`-polarisation to outgoing :math:`s`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_s_to_p"]``: reflection spectrum for incoming :math:`s`-polarisation to outgoing :math:`p`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_s_to_s"]``: reflection spectrum for incoming :math:`s`-polarisation to outgoing :math:`s`-polarisation, 1d Numpy array
 
         - in the circular polarisation basis (``circ=False``):
 
-            - ``Spectrum.data["R_RR"]``: reflection spectrum for incoming :math:`RCP`-polarisation to outgoing :math:`RCP`-polarisation, 1d Numpy array
-            - ``Spectrum.data["R_RL"]``: reflection spectrum for incoming :math:`RCP`-polarisation to outgoing :math:`LCP`-polarisation, 1d Numpy array
-            - ``Spectrum.data["R_LR"]``: reflection spectrum for incoming :math:`LCP`-polarisation to outgoing :math:`RCP`-polarisation, 1d Numpy array
-            - ``Spectrum.data["R_LL"]``: reflection spectrum for incoming :math:`LCP`-polarisation to outgoing :math:`LCP`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_R_to_R"]``: reflection spectrum for incoming :math:`RCP`-polarisation to outgoing :math:`RCP`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_R_to_L"]``: reflection spectrum for incoming :math:`RCP`-polarisation to outgoing :math:`LCP`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_L_to_R"]``: reflection spectrum for incoming :math:`LCP`-polarisation to outgoing :math:`RCP`-polarisation, 1d Numpy array
+            - ``Spectrum.data["R_L_to_L"]``: reflection spectrum for incoming :math:`LCP`-polarisation to outgoing :math:`LCP`-polarisation, 1d Numpy array
 
-        as well as ``time_elapsed`` (float) which calculates the time needed to compute the spectrum.
+        as well as ``time_elapsed`` (float) which calculates the time that it took to compute the spectrum.
 
         :param bool circ: ``False`` to express results in the linear polarisation basis, ``True`` to express results in
                           the circular polarisation basis
@@ -2324,14 +2402,14 @@ class Spectrum(object):
             reflectance, transmittance = model.get_refl_trans(method=method, circ=circ)
 
             # Add the reflectance to lists
-            r_00.append(float(reflectance[0, 0]))
-            r_01.append(float(reflectance[0, 1]))
-            r_10.append(float(reflectance[1, 0]))
-            r_11.append(float(reflectance[1, 1]))
-            t_00.append(float(transmittance[0, 0]))
-            t_01.append(float(transmittance[0, 1]))
-            t_10.append(float(transmittance[1, 0]))
-            t_11.append(float(transmittance[1, 1]))
+            r_00.append(reflectance[0, 0])
+            r_01.append(reflectance[0, 1])
+            r_10.append(reflectance[1, 0])
+            r_11.append(reflectance[1, 1])
+            t_00.append(transmittance[0, 0])
+            t_01.append(transmittance[0, 1])
+            t_10.append(transmittance[1, 0])
+            t_11.append(transmittance[1, 1])
 
             if talk:
                 print("Wavelength " + str(wl) + " nm done.")
@@ -2341,23 +2419,23 @@ class Spectrum(object):
         # Save the lists in the data dictionary
         # If there's already a variable with the same key, it'll overwrite it
         if circ:
-            self.data['R_RR'] = np.array(r_00)
-            self.data['R_RL'] = np.array(r_01)
-            self.data['R_LR'] = np.array(r_10)
-            self.data['R_LL'] = np.array(r_11)
-            self.data['T_RR'] = np.array(t_00)
-            self.data['T_RL'] = np.array(t_01)
-            self.data['T_LR'] = np.array(t_10)
-            self.data['T_LL'] = np.array(t_11)
+            self.data['R_R_to_R'] = np.array(r_00)
+            self.data['R_L_to_R'] = np.array(r_01)
+            self.data['R_R_to_L'] = np.array(r_10)
+            self.data['R_L_to_L'] = np.array(r_11)
+            self.data['T_R_to_R'] = np.array(t_00)
+            self.data['T_L_to_R'] = np.array(t_01)
+            self.data['T_R_to_L'] = np.array(t_10)
+            self.data['T_L_to_L'] = np.array(t_11)
         else:
-            self.data['R_pp'] = np.array(r_00)
-            self.data['R_ps'] = np.array(r_01)
-            self.data['R_sp'] = np.array(r_10)
-            self.data['R_ss'] = np.array(r_11)
-            self.data['T_pp'] = np.array(t_00)
-            self.data['T_ps'] = np.array(t_01)
-            self.data['T_sp'] = np.array(t_10)
-            self.data['T_ss'] = np.array(t_11)
+            self.data['R_p_to_p'] = np.array(r_00)
+            self.data['R_s_to_p'] = np.array(r_01)
+            self.data['R_p_to_s'] = np.array(r_10)
+            self.data['R_s_to_s'] = np.array(r_11)
+            self.data['T_p_to_p'] = np.array(t_00)
+            self.data['T_s_to_p'] = np.array(t_01)
+            self.data['T_p_to_s'] = np.array(t_10)
+            self.data['T_s_to_s'] = np.array(t_11)
 
         self.data['time_elapsed'] = elapsed
 
@@ -2371,10 +2449,10 @@ class Spectrum(object):
 
         then rename the keys in ``Spectrum.data`` with:
         ::
-            my_spectrum.rename_result("R_RR", "R_RR_SM")
-            my_spectrum.rename_result("R_RL", "R_RL_SM")
-            my_spectrum.rename_result("R_LR", "R_LR_SM")
-            my_spectrum.rename_result("R_LL", "R_LL_SM")
+            my_spectrum.rename_result("R_R_to_R", "R_R_to_R_SM")
+            my_spectrum.rename_result("R_R_to_L", "R_R_to_L_SM")
+            my_spectrum.rename_result("R_L_to_R", "R_L_to_R_SM")
+            my_spectrum.rename_result("R_L_to_L", "R_L_to_L_SM")
             my_spectrum.rename_result("time_elapsed", "time_elpased_SM")
 
         then calculate the reflection spectrum with the transfer matrix method:
@@ -2383,10 +2461,10 @@ class Spectrum(object):
 
         then rename the keys in ``Spectrum.data`` with:
         ::
-            my_spectrum.rename_result("R_RR", "R_RR_TM")
-            my_spectrum.rename_result("R_RL", "R_RL_TM")
-            my_spectrum.rename_result("R_LR", "R_LR_TM")
-            my_spectrum.rename_result("R_LL", "R_LL_TM")
+            my_spectrum.rename_result("R_R_to_R", "R_R_to_R_TM")
+            my_spectrum.rename_result("R_R_to_L", "R_R_to_L_TM")
+            my_spectrum.rename_result("R_L_to_R", "R_L_to_R_TM")
+            my_spectrum.rename_result("R_L_to_L", "R_L_to_L_TM")
             my_spectrum.rename_result("time_elapsed", "time_elpased_TM")
 
         in order to save results calculated with both matrix methods.
@@ -2395,7 +2473,8 @@ class Spectrum(object):
 
     def add_result(self, key, value):
         """
-        This function add an entry to the dictionary ``Spectrum.data``. This entry will be included in the content that is saved by ``Spectrum.export()``.
+        This function add an entry to the dictionary ``Spectrum.data``. This entry will be included in the content
+        that is saved by ``Spectrum.export()``.
 
         :param string key: the key for the value to add to the dictionary
         :param value: the value to add (any type)

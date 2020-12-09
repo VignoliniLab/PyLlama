@@ -81,8 +81,8 @@ The results can be plotted:
     fig = plt.figure()
 
     ax1 = fig.add_subplot(311)
-    ax1.plot(wl_nm_list, spectrum.data['R_RR'], label="RCP to RCP")
-    ax1.plot(wl_nm_list, spectrum.data['R_RL'], label="RCP to LCP")
+    ax1.plot(wl_nm_list, spectrum.data['R_R_to_R'], label="RCP to RCP")
+    ax1.plot(wl_nm_list, spectrum.data['R_R_to_L'], label="RCP to LCP")
     plt.legend(loc=2)
     plt.xlim([400, 800])
     plt.ylim([0, 1])
@@ -91,8 +91,8 @@ The results can be plotted:
     ax1.set_title('Incoming RCP')
 
     ax2 = fig.add_subplot(312)
-    ax2.plot(wl_nm_list, spectrum.data['R_LR'], label="LCP to RCP")
-    ax2.plot(wl_nm_list, spectrum.data['R_LL'], label="LCP to LCP")
+    ax2.plot(wl_nm_list, spectrum.data['R_L_to_R'], label="LCP to RCP")
+    ax2.plot(wl_nm_list, spectrum.data['R_L_to_L'], label="LCP to LCP")
     plt.legend(loc=2)
     plt.xlim([400, 800])
     plt.ylim([0, 1])
@@ -103,15 +103,15 @@ The results can be plotted:
 For incoming unpolarised light, the user should not forget to average the incoming RCP and incoming LCP:
 ::
     ax3 = fig.add_subplot(313)
-    ax3.plot(wl_nm_list, 0.5 * (spectrum.data['R_RR']
-                                + spectrum.data['R_RL']
-                                + spectrum.data['R_LR']
-                                + spectrum.data['R_LL']),
+    ax3.plot(wl_nm_list, 0.5 * (spectrum.data['R_R_to_R']
+                                + spectrum.data['R_R_to_L']
+                                + spectrum.data['R_L_to_R']
+                                + spectrum.data['R_L_to_L']),
                                 label="reflection")
-    ax3.plot(wl_nm_list, 0.5 * (spectrum.data['T_RR']
-                                + spectrum.data['T_RL']
-                                + spectrum.data['T_LR']
-                                + spectrum.data['T_LL']),
+    ax3.plot(wl_nm_list, 0.5 * (spectrum.data['T_R_to_R']
+                                + spectrum.data['T_R_to_L']
+                                + spectrum.data['T_L_to_R']
+                                + spectrum.data['T_L_to_L']),
                                 label="transmission")
     plt.legend(loc=2)
     plt.xlim([400, 800])

@@ -151,7 +151,8 @@ Once this is done, the user can create a ``Spectrum`` with ``ChildModel`` as usu
 
     # Parameters for the ChildModel
     # There are two default parameters: default4 and default5
-    # Here, the user sets a value for default5 (which overwrites the default value) and doesn't set a value for default4 (the default value will be used)
+    # The user sets a value for default5: this overwrites the default value
+    # The user doesn't set a value for default4: the default value will be used
     model_type = "ChildModel"
     model_parameters = {"parameter1": my_value_1,
                         "parameter2": my_value_2,
