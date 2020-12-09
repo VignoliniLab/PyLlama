@@ -19,97 +19,97 @@ thicknesses and checks whether the TM methods works or fails.
 
 def calculate_all_spectra(spectrum):
     spectrum.calculate_refl_trans(circ=False, method="SM")
-    spectrum.rename_result("R_pp", "R_pp_SM")
-    spectrum.rename_result("R_ps", "R_ps_SM")
-    spectrum.rename_result("R_sp", "R_sp_SM")
-    spectrum.rename_result("R_ss", "R_ss_SM")
-    spectrum.rename_result("T_pp", "T_pp_SM")
-    spectrum.rename_result("T_ps", "T_ps_SM")
-    spectrum.rename_result("T_sp", "T_sp_SM")
-    spectrum.rename_result("T_ss", "T_ss_SM")
+    spectrum.rename_result("R_p_to_p", "R_p_to_p_SM")
+    spectrum.rename_result("R_p_to_s", "R_p_to_s_SM")
+    spectrum.rename_result("R_s_to_p", "R_s_to_p_SM")
+    spectrum.rename_result("R_s_to_s", "R_s_to_s_SM")
+    spectrum.rename_result("T_p_to_p", "T_p_to_p_SM")
+    spectrum.rename_result("T_p_to_s", "T_p_to_s_SM")
+    spectrum.rename_result("T_s_to_p", "T_s_to_p_SM")
+    spectrum.rename_result("T_s_to_s", "T_s_to_s_SM")
     spectrum.rename_result("time_elapsed", "time_elapsed_SM")
     print("SM linear basis done.")
     spectrum.calculate_refl_trans(circ=True, method="SM")
-    spectrum.rename_result("R_RR", "R_RR_SM")
-    spectrum.rename_result("R_RL", "R_RL_SM")
-    spectrum.rename_result("R_LR", "R_LR_SM")
-    spectrum.rename_result("R_LL", "R_LL_SM")
-    spectrum.rename_result("T_RR", "T_RR_SM")
-    spectrum.rename_result("T_RL", "T_RL_SM")
-    spectrum.rename_result("T_LR", "T_LR_SM")
-    spectrum.rename_result("T_LL", "T_LL_SM")
+    spectrum.rename_result("R_R_to_R", "R_R_to_R_SM")
+    spectrum.rename_result("R_R_to_L", "R_R_to_L_SM")
+    spectrum.rename_result("R_L_to_R", "R_L_to_R_SM")
+    spectrum.rename_result("R_L_to_L", "R_L_to_L_SM")
+    spectrum.rename_result("T_R_to_R", "T_R_to_R_SM")
+    spectrum.rename_result("T_R_to_L", "T_R_to_L_SM")
+    spectrum.rename_result("T_L_to_R", "T_L_to_R_SM")
+    spectrum.rename_result("T_L_to_L", "T_L_to_L_SM")
     print("SM circular basis done.")
     spectrum.calculate_refl_trans(circ=False, method="TM")
-    spectrum.rename_result("R_pp", "R_pp_TM")
-    spectrum.rename_result("R_ps", "R_ps_TM")
-    spectrum.rename_result("R_sp", "R_sp_TM")
-    spectrum.rename_result("R_ss", "R_ss_TM")
-    spectrum.rename_result("T_pp", "T_pp_TM")
-    spectrum.rename_result("T_ps", "T_ps_TM")
-    spectrum.rename_result("T_sp", "T_sp_TM")
-    spectrum.rename_result("T_ss", "T_ss_TM")
+    spectrum.rename_result("R_p_to_p", "R_p_to_p_TM")
+    spectrum.rename_result("R_p_to_s", "R_p_to_s_TM")
+    spectrum.rename_result("R_s_to_p", "R_s_to_p_TM")
+    spectrum.rename_result("R_s_to_s", "R_s_to_s_TM")
+    spectrum.rename_result("T_p_to_p", "T_p_to_p_TM")
+    spectrum.rename_result("T_p_to_s", "T_p_to_s_TM")
+    spectrum.rename_result("T_s_to_p", "T_s_to_p_TM")
+    spectrum.rename_result("T_s_to_s", "T_s_to_s_TM")
     spectrum.rename_result("time_elapsed", "time_elapsed_TM")
     print("TM linear basis done.")
     spectrum.calculate_refl_trans(circ=True, method="TM")
-    spectrum.rename_result("R_RR", "R_RR_TM")
-    spectrum.rename_result("R_RL", "R_RL_TM")
-    spectrum.rename_result("R_LR", "R_LR_TM")
-    spectrum.rename_result("R_LL", "R_LL_TM")
-    spectrum.rename_result("T_RR", "T_RR_TM")
-    spectrum.rename_result("T_RL", "T_RL_TM")
-    spectrum.rename_result("T_LR", "T_LR_TM")
-    spectrum.rename_result("T_LL", "T_LL_TM")
+    spectrum.rename_result("R_R_to_R", "R_R_to_R_TM")
+    spectrum.rename_result("R_R_to_L", "R_R_to_L_TM")
+    spectrum.rename_result("R_L_to_R", "R_L_to_R_TM")
+    spectrum.rename_result("R_L_to_L", "R_L_to_L_TM")
+    spectrum.rename_result("T_R_to_R", "T_R_to_R_TM")
+    spectrum.rename_result("T_R_to_L", "T_R_to_L_TM")
+    spectrum.rename_result("T_L_to_R", "T_L_to_R_TM")
+    spectrum.rename_result("T_L_to_L", "T_L_to_L_TM")
     print("TM circular basis done.")
     spectrum.calculate_refl_trans(circ=False, method="EM")
-    spectrum.rename_result("R_pp", "R_pp_EM")
-    spectrum.rename_result("R_ps", "R_ps_EM")
-    spectrum.rename_result("R_sp", "R_sp_EM")
-    spectrum.rename_result("R_ss", "R_ss_EM")
-    spectrum.rename_result("T_pp", "T_pp_EM")
-    spectrum.rename_result("T_ps", "T_ps_EM")
-    spectrum.rename_result("T_sp", "T_sp_EM")
-    spectrum.rename_result("T_ss", "T_ss_EM")
+    spectrum.rename_result("R_p_to_p", "R_p_to_p_EM")
+    spectrum.rename_result("R_p_to_s", "R_p_to_s_EM")
+    spectrum.rename_result("R_s_to_p", "R_s_to_p_EM")
+    spectrum.rename_result("R_s_to_s", "R_s_to_s_EM")
+    spectrum.rename_result("T_p_to_p", "T_p_to_p_EM")
+    spectrum.rename_result("T_p_to_s", "T_p_to_s_EM")
+    spectrum.rename_result("T_s_to_p", "T_s_to_p_EM")
+    spectrum.rename_result("T_s_to_s", "T_s_to_s_EM")
     spectrum.rename_result("time_elapsed", "time_elapsed_EM")
     print("EM linear basis done.")
     spectrum.calculate_refl_trans(circ=True, method="EM")
-    spectrum.rename_result("R_RR", "R_RR_EM")
-    spectrum.rename_result("R_RL", "R_RL_EM")
-    spectrum.rename_result("R_LR", "R_LR_EM")
-    spectrum.rename_result("R_LL", "R_LL_EM")
-    spectrum.rename_result("T_RR", "T_RR_EM")
-    spectrum.rename_result("T_RL", "T_RL_EM")
-    spectrum.rename_result("T_LR", "T_LR_EM")
-    spectrum.rename_result("T_LL", "T_LL_EM")
+    spectrum.rename_result("R_R_to_R", "R_R_to_R_EM")
+    spectrum.rename_result("R_R_to_L", "R_R_to_L_EM")
+    spectrum.rename_result("R_L_to_R", "R_L_to_R_EM")
+    spectrum.rename_result("R_L_to_L", "R_L_to_L_EM")
+    spectrum.rename_result("T_R_to_R", "T_R_to_R_EM")
+    spectrum.rename_result("T_R_to_L", "T_R_to_L_EM")
+    spectrum.rename_result("T_L_to_R", "T_L_to_R_EM")
+    spectrum.rename_result("T_L_to_L", "T_L_to_L_EM")
     print("EM circular basis done.")
 
 
 def plot_all_spectra(spectrum, ax_R, ax_T):
     colors = pl.cm.Set2(np.linspace(0, 1, 8))
-    data_refl_TM = 0.5 * (spectrum.data['R_RR_TM']
-                          + spectrum.data['R_LL_TM']
-                          + spectrum.data['R_RL_TM']
-                          + spectrum.data['R_LR_TM'])
-    data_refl_SM = 0.5 * (spectrum.data['R_RR_SM']
-                          + spectrum.data['R_LL_SM']
-                          + spectrum.data['R_RL_SM']
-                          + spectrum.data['R_LR_SM'])
-    data_refl_EM = 0.5 * (spectrum.data['R_RR_EM']
-                          + spectrum.data['R_LL_EM']
-                          + spectrum.data['R_RL_EM']
-                          + spectrum.data['R_LR_EM'])
+    data_refl_TM = 0.5 * (spectrum.data['R_R_to_R_TM']
+                          + spectrum.data['R_L_to_L_TM']
+                          + spectrum.data['R_R_to_L_TM']
+                          + spectrum.data['R_L_to_R_TM'])
+    data_refl_SM = 0.5 * (spectrum.data['R_R_to_R_SM']
+                          + spectrum.data['R_L_to_L_SM']
+                          + spectrum.data['R_R_to_L_SM']
+                          + spectrum.data['R_L_to_R_SM'])
+    data_refl_EM = 0.5 * (spectrum.data['R_R_to_R_EM']
+                          + spectrum.data['R_L_to_L_EM']
+                          + spectrum.data['R_R_to_L_EM']
+                          + spectrum.data['R_L_to_R_EM'])
 
-    data_trans_TM = 0.5 * (spectrum.data['T_RR_TM']
-                           + spectrum.data['T_LL_TM']
-                           + spectrum.data['T_RL_TM']
-                           + spectrum.data['T_LR_TM'])
-    data_trans_SM = 0.5 * (spectrum.data['T_RR_SM']
-                           + spectrum.data['T_LL_SM']
-                           + spectrum.data['T_RL_SM']
-                           + spectrum.data['T_LR_SM'])
-    data_trans_EM = 0.5 * (spectrum.data['T_RR_EM']
-                           + spectrum.data['T_LL_EM']
-                           + spectrum.data['T_RL_EM']
-                           + spectrum.data['T_LR_EM'])
+    data_trans_TM = 0.5 * (spectrum.data['T_R_to_R_TM']
+                           + spectrum.data['T_L_to_L_TM']
+                           + spectrum.data['T_R_to_L_TM']
+                           + spectrum.data['T_L_to_R_TM'])
+    data_trans_SM = 0.5 * (spectrum.data['T_R_to_R_SM']
+                           + spectrum.data['T_L_to_L_SM']
+                           + spectrum.data['T_R_to_L_SM']
+                           + spectrum.data['T_L_to_R_SM'])
+    data_trans_EM = 0.5 * (spectrum.data['T_R_to_R_EM']
+                           + spectrum.data['T_L_to_L_EM']
+                           + spectrum.data['T_R_to_L_EM']
+                           + spectrum.data['T_L_to_R_EM'])
 
     ax_R.plot(wl_nm_list, data_refl_TM, color=colors[0], label='TM')
     ax_R.plot(wl_nm_list, data_refl_EM, color=colors[2], linestyle='dotted', label='EM')
@@ -160,7 +160,9 @@ spectrum_1 = ll.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole, n_e=n
                                                             n_exit=n_exit, N_per=N_per_1, theta_in_rad=theta_in_rad))
 spectrum_2 = ll.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole, n_e=n_e_2, n_o=n_o_2, n_entry=n_entry,
                                                             n_exit=n_exit, N_per=N_per_2, theta_in_rad=theta_in_rad))
+print("Starting the small system")
 calculate_all_spectra(spectrum_1)
+print("Starting the big system")
 calculate_all_spectra(spectrum_2)
 
 fig = plt.figure()
@@ -179,7 +181,7 @@ ax_11.set_title("Transmittance, big system")
 
 plt.tight_layout()
 
-#fig.savefig('figure_7_b_c_d_spectra_SM_TM_EM.png', dpi=300)
+#fig.savefig('scripT_s_to_pectra_SM_TM_EM_figure.png', dpi=300)
 
 print('Time elapsed for the small system:')
 print('SM: ' + str(spectrum_1.data['time_elapsed_SM']))
