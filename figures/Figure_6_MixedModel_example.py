@@ -144,6 +144,6 @@ ax4.set_ylabel('Reflectance')
 plt.axes(ax4)
 #plt.grid()
 
-#fig.savefig('fig_mixedmodel.png', dpi=300)
+#fig.savefig('figure_6_mixedmodel.png', dpi=300)
 
 plt.show()

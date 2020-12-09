@@ -326,10 +326,10 @@ plt.xlim((0, 1))
 plt.legend()
 plt.tight_layout()
 
-#fig_index_expo.savefig('fig_yeh_non_homogeneous_index_expo.png', dpi=300)
-#fig_spec_expo.savefig('fig_yeh_non_homogeneous_spec_expo.png', dpi=300)
-#fig_index_hyper.savefig('fig_yeh_non_homogeneous_index_hyper.png', dpi=300)
-#fig_spec_hyper.savefig('fig_yeh_non_homogeneous_spec_hyper.png', dpi=300)
+#fig_index_expo.savefig('figure_4_c_d_non_homogeneous_index_expo.png', dpi=300)
+#fig_spec_expo.savefig('figure_4_c_d_non_homogeneous_spec_expo.png', dpi=300)
+#fig_index_hyper.savefig('figure_4_c_d_non_homogeneous_index_hyper.png', dpi=300)
+#fig_spec_hyper.savefig('figure_4_c_d_non_homogeneous_spec_hyper.png', dpi=300)
 
 plt.show()
 

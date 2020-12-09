@@ -216,6 +216,6 @@ plt.tight_layout()
 plt.subplots_adjust(hspace=0.0)
 plt.subplots_adjust(wspace=0.35)
 
-fig_S_K.savefig("riviere_fig_S_K_appendix.pdf", dpi=300)
+fig_S_K.savefig("figure_A9_sorting_partial_waves.png", dpi=300)
 
 plt.show()

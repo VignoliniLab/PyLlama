@@ -135,7 +135,7 @@ plt.legend(loc=1, prop={'size': 9})
 
 plt.tight_layout()
 
-#fig_spec.savefig('fig_yeh_bragg.png', dpi=300)
+#fig_spec.savefig('figure_4_a_b_Bragg_stack.png', dpi=300)
 
 plt.show()
 

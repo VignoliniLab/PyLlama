@@ -179,7 +179,7 @@ ax_11.set_title("Transmittance, big system")
 
 plt.tight_layout()
 
-#fig.savefig('script_spectra_SM_TM_EM_figure.png', dpi=300)
+#fig.savefig('figure_7_b_c_d_spectra_SM_TM_EM.png', dpi=300)
 
 print('Time elapsed for the small system:')
 print('SM: ' + str(spectrum_1.data['time_elapsed_SM']))

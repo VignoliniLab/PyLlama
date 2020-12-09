@@ -27,8 +27,6 @@ pitch_nm = 500
 theta_in_rad = theta_in_deg * np.pi / 180
 wl_bragg = 0.5 * (n_e + n_o) * pitch_nm * np.cos(theta_in_rad)
 
-figname = "script_plot_eigenvector_rotation_Eaxes_chole_nav=1.433_biref=0.035_pitch500_reso360_wlbragg_theta60"
-
 # Calculation with Scatmat
 n_exit = n_entry
 thickness_nm = 500
@@ -138,11 +136,7 @@ fig.legend(['Analytical', 'Forward 1', 'Forward 2', 'Backward 1', 'Backward 2'],
 
 plt.tight_layout()
 
-figname_png = figname + ".png"
-#figname_svg = figname + ".svg"
-
-#fig.savefig(figname_png, dpi=300)
-#fig.savefig(figname_svg)
+#fig.savefig("figure_4_e_f_eigenvectors", dpi=300)
 
 plt.show()
 

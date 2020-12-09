@@ -96,7 +96,7 @@ chole_small = ch.Cholesteric(pitch360=pitch_nm, tilt_rad=tilt_rad, N_hel360=peri
 chole_big = ch.Cholesteric(pitch360=pitch_nm, tilt_rad=tilt_rad, N_hel360=periods, handedness=handedness, resolution=40)
 spectrum = sc.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole_big, n_e=n_e, n_o=n_o, n_entry=n_entry,
                                                        n_exit=n_exit, N_per=N_hel360, theta_in_rad=theta_in_rad))
-make_and_save_fig("Right-handed", "chole_showcase_right.svg", chole_small, spectrum)
+make_and_save_fig("Right-handed", "figure_5_chole_showcase_right.svg", chole_small, spectrum)
 print("Usual cholesteric done.")
 
 
@@ -113,7 +113,7 @@ print("hereeeeeeeeeeee")
 print(chole_big.helical_axis)
 spectrum = sc.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole_big, n_e=n_e, n_o=n_o, n_entry=n_entry,
                                                        n_exit=n_exit, N_per=N_hel360, theta_in_rad=theta_in_rad))
-make_and_save_fig("Tilted", "chole_showcase_tilted.svg", chole_small, spectrum)
+make_and_save_fig("Tilted", "figure_5_chole_showcase_tilted.svg", chole_small, spectrum)
 print("Tilted cholesteric done.")
 
 
@@ -133,7 +133,7 @@ chole_big.compress(0.7)
 print([d * 180 / np.pi for d in chole_big.slices_rotangles])
 spectrum = sc.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole_big, n_e=n_e, n_o=n_o, n_entry=n_entry,
                                                        n_exit=n_exit, N_per=N_hel360, theta_in_rad=theta_in_rad))
-make_and_save_fig("Compressed", "chole_showcase_compressed.svg", chole_small, spectrum)
+make_and_save_fig("Compressed", "figure_5_chole_showcase_compressed.svg", chole_small, spectrum)
 print("Compressed cholesteric done.")
 
 
@@ -148,7 +148,7 @@ chole_small = ch.Cholesteric(pitch360=pitch_nm, tilt_rad=tilt_rad, N_hel360=peri
 chole_big = ch.Cholesteric(pitch360=pitch_nm, tilt_rad=tilt_rad, N_hel360=periods, handedness=handedness, resolution=40)
 spectrum = sc.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole_big, n_e=n_e, n_o=n_o, n_entry=n_entry,
                                                        n_exit=n_exit, N_per=N_hel360, theta_in_rad=theta_in_rad))
-make_and_save_fig("Left-handed", "chole_showcase_left.svg", chole_small, spectrum)
+make_and_save_fig("Left-handed", "figure_5_chole_showcase_left.svg", chole_small, spectrum)
 print("Left-handed cholesteric done.")
 
 
@@ -163,7 +163,7 @@ chole_small = ch.Cholesteric(pitch360=pitch_nm, tilt_rad=tilt_rad, N_hel360=peri
 chole_big = ch.Cholesteric(pitch360=pitch_nm, tilt_rad=tilt_rad, N_hel360=periods, handedness=handedness, resolution=40)
 spectrum = sc.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole_big, n_e=n_e, n_o=n_o, n_entry=n_entry,
                                                        n_exit=n_exit, N_per=N_hel360, theta_in_rad=theta_in_rad))
-make_and_save_fig("Oblique", "chole_showcase_oblique.svg", chole_small, spectrum)
+make_and_save_fig("Oblique", "figure_5_chole_showcase_oblique.svg", chole_small, spectrum)
 print("Oblique incidence cholesteric done.")
 
 
@@ -182,7 +182,7 @@ chole_big.distort(3)
 print([d * 180 / np.pi for d in chole_big.slices_rotangles])
 spectrum = sc.Spectrum(wl_nm_list, "CholestericModel", dict(chole=chole_big, n_e=n_e, n_o=n_o, n_entry=n_entry,
                                                        n_exit=n_exit, N_per=N_hel360, theta_in_rad=theta_in_rad))
-make_and_save_fig("Distorted", "chole_showcase_distorted.svg", chole_small, spectrum)
+make_and_save_fig("Distorted", "figure_5_chole_showcase_distorted.svg", chole_small, spectrum)
 print("Distorted cholesteric done.")
 
 

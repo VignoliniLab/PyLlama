@@ -137,7 +137,7 @@ for klay in [0, 15, 30, 45, 60, 75, 90]:  # with resolution=360, each layer numb
     plt.tight_layout()
 
     # Save the figure
-    figname = "eigenwaves_chole_slice" + str(klay) + ".png"
+    figname = "figure_A8_eigenwaves_chole_slice" + str(klay) + ".png"
     #fig.savefig(figname, dpi=300)
     #plt.close('all')
 
@@ -253,7 +253,7 @@ fig.suptitle("Entry half-space")
 plt.tight_layout()
 
 # Save the figure
-figname = "eigenwaves_chole_entry.png"
+figname = "figure_A8_eigenwaves_chole_entry.png"
 #fig.savefig(figname, dpi=300)
 #plt.close('all')
 

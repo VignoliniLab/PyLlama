@@ -340,7 +340,7 @@ plt.xlim(xlimlist)
 
 plt.tight_layout()
 
-#fig.savefig("analysis_chole_reflco.png", dpi=300)
+#fig.savefig("figure_7_a_analysis_chole_reflco.png", dpi=300)
 
 
 #########################################
@@ -433,7 +433,7 @@ cb.set_label('Number of layers')
 
 plt.tight_layout()
 
-#fig.savefig("analysis_chole_reflco_SM_TM_matrix.png", dpi=300)
+#fig.savefig("figure_7_a_analysis_chole_reflco_SM_TM_matrix.png", dpi=300)
 
 
 #################################
@@ -471,7 +471,7 @@ ax_33 = fig.add_subplot(gs[3, 3])
 plot_all_blocks(data_SM)
 plt.suptitle('SM')
 plt.tight_layout()
-#fig.savefig("analysis_chole_reflco_matrix_elements_SM.png", dpi=300)
+#fig.savefig("figure_7_a_analysis_chole_reflco_matrix_elements_SM.png", dpi=300)
 
 
 #################################
@@ -509,7 +509,7 @@ ax_33 = fig.add_subplot(gs[3, 3])
 plot_all_blocks(data_TM)
 plt.suptitle('TM')
 plt.tight_layout()
-#fig.savefig("analysis_chole_reflco_matrix_elements_TM.png", dpi=300)
+#fig.savefig("figure_7_a_analysis_chole_reflco_matrix_elements_TM.png", dpi=300)
 
 
 plt.show()
