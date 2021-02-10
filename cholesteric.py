@@ -67,9 +67,9 @@ class Cholesteric(object):
         self.q = handedness * 2 * np.pi / self.pitch
         self.tilt = tilt_rad  # tilt, angle in degrees between 0 and 90
         self.slicing = np.linspace(0, self.N_hel * pitch360, self.N_hel * self.resolution, endpoint=False)
-        self.e1_u = np.array([cos(self.beta), 0, -sin(self.beta)])
+        self.e1_u = np.array([cos(self.tilt), 0, -sin(self.tilt)])
         self.e2_u = np.array([0, 1, 0])
-        self.e3_u = np.array([sin(self.beta), 0, cos(self.beta)])
+        self.e3_u = np.array([sin(self.tilt), 0, cos(self.tilt)])
         self.helical_axis = np.array([sin(self.tilt), 0, cos(self.tilt)])  # helical axis
         self.slices_rotangles = self.q * self.slicing
         self.slices_directors = [cos(self.tilt)*cos(iphi)*x_u + sin(iphi)*y_u -sin(self.tilt)*cos(iphi)*z_u for iphi in self.slices_rotangles]
