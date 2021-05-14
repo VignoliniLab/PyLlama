@@ -483,7 +483,7 @@ class Layer(object):
             else:
                 id_refl.append(k)
         """
-        # Analysis from Jean-Paul Hugonin:
+        # Analysis with the wavevector:
         id_refl = []
         id_trans = []
         list_sort_Kz = []
