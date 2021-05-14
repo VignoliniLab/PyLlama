@@ -133,6 +133,7 @@ def plot_all_spectra(spectrum, ax_R, ax_T):
     plt.xlabel('Wavelength (nm)')
     plt.ylabel('Transmittance')
 
+
 # Common parameters
 n_av = 1.433
 pitch_nm = 480
@@ -141,7 +142,7 @@ n_entry = n_av
 n_exit = n_av
 theta_in_deg = 0
 theta_in_rad = theta_in_deg * np.pi / 180
-wl_nm_list = np.arange(400, 800, 1)  # 0.2 for nicer spectral resolution
+wl_nm_list = np.arange(400, 800, 0.1)  # 0.2 for nicer spectral resolution
 
 # Cholesteric 1
 biref_1 = 0.05
@@ -181,7 +182,8 @@ ax_11.set_title("Transmittance, big system")
 
 plt.tight_layout()
 
-#fig.savefig('scripT_s_to_pectra_SM_TM_EM_figure.png', dpi=300)
+fig.savefig('figure_7_bcd_spectra_SM_TM_EM_figure.png', dpi=300)
+fig.savefig('figure_7_bcd_SM_TM_EM_figure.svg')
 
 print('Time elapsed for the small system:')
 print('SM: ' + str(spectrum_1.data['time_elapsed_SM']))

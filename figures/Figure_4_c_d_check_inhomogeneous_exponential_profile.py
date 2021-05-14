@@ -72,7 +72,7 @@ def refl_yeh_continuous_hyperbolic(n0_f, ns_f, L_f, wl_f):
 
 # For PyLlama: refractive indices for layers that have the same thickness
 def index_discrete_same_thickness(n0_f, ns_f, L_f, resolution_f):
-    thickness_list_same = [L_f / (resolution_f + 1) for lay in range(0, resolution_f + 1, 1)]
+    thickness_list_same = [L_f / (resolution_f) for lay in range(0, resolution_f, 1)]  # here x2
     temp = [0] + thickness_list_same
     thickness_list_cumulative = [sum(temp[0:k + 1]) for k in range(len(temp) - 1)]
     n_list_same = [n0_f * (ns_f / n0_f) ** (x / L_f) for x in thickness_list_cumulative]
@@ -85,8 +85,8 @@ def index_discrete_same_thickness(n0_f, ns_f, L_f, resolution_f):
 # For PyLlama: refractive indices for layers that have the same optical thickness
 def index_discrete_optical_thickness(n0_f, ns_f, L_f, wl_f, resolution_f):
     # Calculate the refractive index of the layers
-    layers = range(0, resolution_f + 1, 1)
-    n_list_optical = [n0_f * (ns_f / n0_f) ** (lay / (resolution_f + 1)) for lay in layers]
+    layers = range(0, resolution_f, 1)  # here
+    n_list_optical = [n0_f * (ns_f / n0_f) ** (lay / (resolution_f)) for lay in layers]  # here
     # Calculate the thickness of the layers
     phi = 1
     thickness_list_1 = [wl_f * phi / (2 * np.pi * ni) for ni in n_list_optical]
@@ -186,28 +186,28 @@ L = 100  # total thickness of the layer in nm
 xvar_list = np.linspace(0.01, 1, 100)
 
 # Initialisation of figures
-fig_index_expo = plt.figure(0, constrained_layout=False)  # papprE figsize=(3, 2)
+fig_index_expo = plt.figure(0, constrained_layout=False, figsize=(2.7, 2))  # paper figsize=(3, 2)
 widths = [1]
 heights = [1]
 gs = fig_index_expo.add_gridspec(1, 1, width_ratios=widths, height_ratios=heights)
 ax_index_expo = fig_index_expo.add_subplot(gs[0, 0])
 plt.title("Exponential")
 
-fig_spec_expo = plt.figure(1, constrained_layout=False)  # papprE figsize=(3, 2)
+fig_spec_expo = plt.figure(1, constrained_layout=False, figsize=(2.7, 2))  # paper figsize=(3, 2)
 widths = [1]
 heights = [1]
 gs = fig_spec_expo.add_gridspec(1, 1, width_ratios=widths, height_ratios=heights)
 ax_spec_expo = fig_spec_expo.add_subplot(gs[0, 0])
 plt.title("Exponential")
 
-fig_index_hyper = plt.figure(2, constrained_layout=False)  # papprE figsize=(3, 2)
+fig_index_hyper = plt.figure(2, constrained_layout=False, figsize=(2.7, 2))  # paper figsize=(3, 2)
 widths = [1]
 heights = [1]
 gs = fig_index_hyper.add_gridspec(1, 1, width_ratios=widths, height_ratios=heights)
 ax_index_hyper = fig_index_hyper.add_subplot(gs[0, 0])
 plt.title("Hyperbolic")
 
-fig_spec_hyper = plt.figure(3, constrained_layout=False)  # papprE figsize=(3, 2)
+fig_spec_hyper = plt.figure(3, constrained_layout=False, figsize=(2.7, 2))  # paper figsize=(3, 2)
 widths = [1]
 heights = [1]
 gs = fig_spec_hyper.add_gridspec(1, 1, width_ratios=widths, height_ratios=heights)
@@ -330,6 +330,11 @@ plt.tight_layout()
 #fig_spec_expo.savefig('figure_4_c_d_non_homogeneous_spec_expo.png', dpi=300)
 #fig_index_hyper.savefig('figure_4_c_d_non_homogeneous_index_hyper.png', dpi=300)
 #fig_spec_hyper.savefig('figure_4_c_d_non_homogeneous_spec_hyper.png', dpi=300)
+
+fig_index_expo.savefig('fig_yeh_non_homogeneous_index_expo.svg')
+fig_spec_expo.savefig('fig_yeh_non_homogeneous_spec_expo.svg')
+fig_index_hyper.savefig('fig_yeh_non_homogeneous_index_hyper.svg')
+fig_spec_hyper.savefig('fig_yeh_non_homogeneous_spec_hyper.svg')
 
 plt.show()
 

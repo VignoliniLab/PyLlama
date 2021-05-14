@@ -11,6 +11,7 @@ reflection spectra of the individual CholestericModels and of these two MixedMod
 This script is used for our Figure 6.
 """
 
+plt.rcParams.update({'font.size': 12})
 
 # Parameters to choose manually
 n_av = 1.433
@@ -77,19 +78,19 @@ for wl_nm in wl_nm_list:
 
     # Reflection of the individual CholestericModels
     refl_1, _ = chole_model_1.get_refl_trans(method="SM", circ=True)
-    refl_chole_1_RCP.append(0.5 * (refl_1[0, 0] + refl_1[0, 1]))  # unpolarised to RCP
-    refl_chole_1_LCP.append(0.5 * (refl_1[1, 1] + refl_1[1, 0]))  # unpolarised to LCP
+    refl_chole_1_RCP.append(0.5 * (refl_1[0, 0] + refl_1[1, 0]))  # incident RCP
+    refl_chole_1_LCP.append(0.5 * (refl_1[1, 1] + refl_1[0, 1]))  # incident LCP
     refl_2, _ = chole_model_2.get_refl_trans(method="SM", circ=True)
-    refl_chole_2_RCP.append(0.5 * (refl_2[0, 0] + refl_2[0, 1]))  # unpolarised to RCP
-    refl_chole_2_LCP.append(0.5 * (refl_2[1, 1] + refl_2[1, 0]))  # unpolarised to LCP
+    refl_chole_2_RCP.append(0.5 * (refl_2[0, 0] + refl_2[1, 0]))  # incident RCP
+    refl_chole_2_LCP.append(0.5 * (refl_2[1, 1] + refl_2[0, 1]))  # incident LCP
 
     # Reflection of the MixedModels
     refl_mix_SM_12, _ = chole_model_mix_12.get_refl_trans(method="SM", circ=True)
-    refl_chole_mix_12_RCP.append(0.5 * (refl_mix_SM_12[0, 0] + refl_mix_SM_12[0, 1]))  # unpolarised to RCP
-    refl_chole_mix_12_LCP.append(0.5 * (refl_mix_SM_12[1, 1] + refl_mix_SM_12[1, 0]))  # unpolarised to LCP
+    refl_chole_mix_12_RCP.append((refl_mix_SM_12[0, 0] + refl_mix_SM_12[1, 0]))  # incident RCP
+    refl_chole_mix_12_LCP.append((refl_mix_SM_12[1, 1] + refl_mix_SM_12[0, 1]))  # incident LCP
     refl_mix_SM_21, _ = chole_model_mix_21.get_refl_trans(method="SM", circ=True)
-    refl_chole_mix_21_RCP.append(0.5 * (refl_mix_SM_21[0, 0] + refl_mix_SM_21[0, 1]))  # unpolarised to RCP
-    refl_chole_mix_21_LCP.append(0.5 * (refl_mix_SM_21[1, 1] + refl_mix_SM_21[1, 0]))  # unpolarised to LCP
+    refl_chole_mix_21_RCP.append((refl_mix_SM_21[0, 0] + refl_mix_SM_21[1, 0]))  # incident RCP
+    refl_chole_mix_21_LCP.append((refl_mix_SM_21[1, 1] + refl_mix_SM_21[0, 1]))  # incident LCP
 
     print("Wavelength %s nm done." % (str(wl_nm)))
 
@@ -97,53 +98,54 @@ for wl_nm in wl_nm_list:
 fig = plt.figure(constrained_layout=True, figsize=(5.2, 3.8))
 gs = fig.add_gridspec(2, 2)
 ax1 = fig.add_subplot(gs[0, 0])
-ax1.plot(wl_nm_list, refl_chole_1_RCP, linestyle='solid', label='RCP')
-ax1.plot(wl_nm_list, refl_chole_1_LCP, linestyle='solid', label='LCP')
-ax1.plot(wl_nm_list, np.array(refl_chole_1_RCP) + np.array(refl_chole_1_LCP), color='k', linestyle='dashdot', label='total')
-plt.legend()
-ax1.set_ylim([0, 1])
-ax1.set_xlim([550, 700])
-ax1.set_xlabel(r'$\lambda$ (nm)')
-ax1.set_ylabel('Reflectance')
-plt.axes(ax1)
-#plt.grid()
-
 ax2 = fig.add_subplot(gs[1, 0])
-ax2.plot(wl_nm_list, refl_chole_2_RCP, linestyle='solid', label='RCP')
-ax2.plot(wl_nm_list, refl_chole_2_LCP, linestyle='solid', label='LCP')
-ax2.plot(wl_nm_list, np.array(refl_chole_2_RCP) + np.array(refl_chole_2_LCP), color='k', linestyle='dashdot', label='total')
-plt.legend()
-ax2.set_ylim([0, 1])
-ax2.set_xlim([550, 700])
-ax2.set_xlabel(r'$\lambda$ (nm)')
-ax2.set_ylabel('Reflectance')
-plt.axes(ax2)
-#plt.grid()
-
 ax3 = fig.add_subplot(gs[0, 1])
-ax3.plot(wl_nm_list, refl_chole_mix_12_RCP, linestyle='solid', label='RCP')
-ax3.plot(wl_nm_list, refl_chole_mix_12_LCP, linestyle='dashed', label='LCP')
-ax3.plot(wl_nm_list, np.array(refl_chole_mix_12_RCP) + np.array(refl_chole_mix_12_LCP), color='k', linestyle='dashdot', label='total')
-plt.legend()
-ax3.set_ylim([0, 1])
-ax3.set_xlim([550, 700])
-ax3.set_xlabel(r'$\lambda$ (nm)')
-ax3.set_ylabel('Reflectance')
-plt.axes(ax3)
-#plt.grid()
-
 ax4 = fig.add_subplot(gs[1, 1])
-ax4.plot(wl_nm_list, refl_chole_mix_21_RCP, linestyle='solid', label='RCP')
-ax4.plot(wl_nm_list, refl_chole_mix_21_LCP, linestyle='dashed', label='LCP')
-ax4.plot(wl_nm_list, np.array(refl_chole_mix_21_RCP) + np.array(refl_chole_mix_21_LCP), color='k', linestyle='dashdot', label='total')
+
+plt.sca(ax1)
+plt.plot(wl_nm_list, refl_chole_1_RCP, linestyle='solid', label='RCP')
+plt.plot(wl_nm_list, refl_chole_1_LCP, linestyle='solid', label='LCP')
 plt.legend()
-ax4.set_ylim([0, 1])
-ax4.set_xlim([550, 700])
-ax4.set_xlabel(r'$\lambda$ (nm)')
-ax4.set_ylabel('Reflectance')
-plt.axes(ax4)
+plt.ylim((-0.1, 1.1))
+plt.yticks((0, 1))
+plt.xlim([550, 700])
+plt.xlabel(r'$\lambda$ (nm)')
+plt.ylabel('Reflectance')
 #plt.grid()
 
-#fig.savefig('figure_6_mixedmodel.png', dpi=300)
+plt.sca(ax2)
+plt.plot(wl_nm_list, refl_chole_2_RCP, linestyle='solid', label='RCP')
+plt.plot(wl_nm_list, refl_chole_2_LCP, linestyle='solid', label='LCP')
+plt.legend()
+plt.ylim((-0.1, 1.1))
+plt.yticks((0, 1))
+plt.xlim([550, 700])
+plt.xlabel(r'$\lambda$ (nm)')
+plt.ylabel('Reflectance')
+#plt.grid()
+
+plt.sca(ax3)
+plt.plot(wl_nm_list, refl_chole_mix_12_RCP, linestyle='solid', label='RCP')
+plt.plot(wl_nm_list, refl_chole_mix_12_LCP, linestyle='solid', label='LCP')
+plt.legend()
+plt.ylim((-0.1, 1.1))
+plt.yticks((0, 1))
+plt.xlim([550, 700])
+plt.xlabel(r'$\lambda$ (nm)')
+plt.ylabel('Reflectance')
+#plt.grid()
+
+plt.sca(ax4)
+plt.plot(wl_nm_list, refl_chole_mix_21_RCP, linestyle='solid', label='RCP')
+plt.plot(wl_nm_list, refl_chole_mix_21_LCP, linestyle='solid', label='LCP')
+plt.legend()
+plt.ylim((-0.1, 1.1))
+plt.yticks((0, 1))
+plt.xlim([550, 700])
+plt.xlabel(r'$\lambda$ (nm)')
+plt.ylabel('Reflectance')
+#plt.grid()
+
+fig.savefig('figure_6_mixedmodel.svg', dpi=300)
 
 plt.show()

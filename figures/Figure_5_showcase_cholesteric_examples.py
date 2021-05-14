@@ -16,6 +16,7 @@ The user is invited to mix and match these examples.
 The output of this script is used for Figure 5.
 """
 
+plt.rcParams.update({'font.size': 18})
 
 # Definition of the functions that construct the plots and calculate the spectra
 def custom_plot_sche(ch, fig_f, ax_sche):
@@ -37,17 +38,16 @@ def custom_plot_plo(sp, ax_plo):
     """
     Axis with the reflectance plots + calculation of the reflectance
     """
+    plt.sca(ax_plo)
     sp.calculate_refl_trans(circ=True, method="TM", talk=True)  # TM = faster
-    ax_plo.plot(wl_nm_list, 0.5 * (sp.data['R_R_to_R'] + sp.data['R_L_to_R']), label="RCP")
-    ax_plo.plot(wl_nm_list, 0.5 * (sp.data['R_L_to_R'] + sp.data['R_L_to_L']), label="LCP")
-    ax_plo.plot(wl_nm_list, 0.5 * (sp.data['R_R_to_R'] + sp.data['R_R_to_L'] + sp.data['R_L_to_R'] + sp.data['R_L_to_L']),
-                color='k', linestyle='dotted', label="unpolarised")
-    ax_plo.set_ylim((0, 1))
+    plt.plot(wl_nm_list, (sp.data['R_R_to_R'] + sp.data['R_R_to_L']), label="Incident RCP")
+    plt.plot(wl_nm_list, (sp.data['R_L_to_R'] + sp.data['R_L_to_L']), label="Incident LCP")
+    plt.ylim((-0.1, 1.1))
     plt.yticks((0, 1))
-    ax_plo.set_xlim((400, 800))
+    plt.xlim((400, 800))
     plt.xticks((400, 600, 800))
-    ax_plo.set_xlabel(r'$\lambda$ (nm)')
-    ax_plo.set_ylabel("Reflectance")
+    plt.xlabel(r'$\lambda$ (nm)')
+    plt.ylabel("Reflectance")
 
 
 def make_and_save_fig(title_string, file_string, chole_small_f, spectrum_f):

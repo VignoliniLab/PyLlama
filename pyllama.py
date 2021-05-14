@@ -468,7 +468,8 @@ class Layer(object):
             else:
                 id_refl.append(k)
         """
-        # Analyse with the Poynting vector:
+
+        # Analysis with the Poynting vector:
         id_refl = []
         id_trans = []
         for k in range(0, 4, 1):
@@ -481,6 +482,23 @@ class Layer(object):
                 id_trans.append(k)
             else:
                 id_refl.append(k)
+        """
+        # Analysis from Jean-Paul Hugonin:
+        id_refl = []
+        id_trans = []
+        list_sort_Kz = []
+        if all(np.isreal(q) for q in q_unsorted):
+            for k in range(0, 4, 1):
+                q_k = q_unsorted[k]
+                list_sort_Kz.append(np.real(q_k))
+        else:
+            for k in range(0, 4, 1):
+                q_k = q_unsorted[k]
+                list_sort_Kz.append(np.imag(q_k))
+        sorted_indices = np.argsort(list_sort_Kz)
+        id_refl = [sorted_indices[0], sorted_indices[1]]
+        id_trans = [sorted_indices[2], sorted_indices[3]]
+        """
 
         # Sort in a unique way by analysing p
         # Find out whether it is birefringent
@@ -512,6 +530,11 @@ class Layer(object):
 
         # Sort p and q
         order = [id_trans[1], id_trans[0], id_refl[1], id_refl[0]]
+
+        # Try to shuffle
+        #order = [id_trans[0], id_refl[1], id_trans[1], id_refl[0]]
+        #import random
+        #random.shuffle(order)
 
         q_sorted = np.array([q_unsorted[order[0]], q_unsorted[order[1]], q_unsorted[order[2]], q_unsorted[order[3]]])
 
@@ -784,7 +807,6 @@ class Structure(object):
         :param list structures_list: a list of ``Structures``
         :return bool: ``True`` if all ``Structures`` from the list are compatible, ``False`` otherwise
         """
-        # TODO test this function
         result = True
         sk = 0
         while result and sk < len(structures_list):
@@ -899,7 +921,6 @@ class Structure(object):
             [layer_b.P[2, 0], layer_b.P[2, 1], -layer_a.P[2, 2], -layer_a.P[2, 3]],
             [layer_b.P[3, 0], layer_b.P[3, 1], -layer_a.P[3, 2], -layer_a.P[3, 3]]
         ])
-
         S12 = la_np.multi_dot((la_np.inv(Q_backward), la_np.inv(P_in), P_out, Q_forward))
         return S12
 
