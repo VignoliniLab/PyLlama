@@ -16,6 +16,7 @@ Welcome to PyLlama's documentation!
    tutorials/quick_cholesteric_tutorial.rst
    tutorials/choosing_between_TM_and_SM.rst
    tutorials/creating_a_custom_model_class.rst
+   tutorials/acknowledgements.rst
 
 Documentation
 =============
