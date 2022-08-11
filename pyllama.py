@@ -1,12 +1,20 @@
 import numpy as np
 from numpy import linalg as la_np
 from scipy import linalg as la_sp
+from scipy.linalg import expm
 import warnings
 import time  # to calculate the time elapsed for a spectrum
 import pickle  # to save as Pickle file
 import scipy.io  # to save as Matlab file
 
 # np.set_printoptions(precision=4) # TODO remove
+
+#This is a modified version of the open source Pyllama project
+#(https://doi.org/10.1016/j.cpc.2021.108256)
+
+#Credit goes to Melanie M Bay and Kevin Vynck, though I (Andrew Salij)
+#have made a number of improvements for calculating spectra w/
+#linear dispersion
 
 # Constants
 c = 2.998e8  # speed of light in vacuum
@@ -57,6 +65,37 @@ def rot_mat(axis=np.array([0, 0, 1]), theta_rad=0):
                          [uz * ux * (1 - costheta) - uy * sintheta, uz * uy * (1 - costheta) + ux * sintheta,
                           costheta + (uz ** 2) * (1 - costheta)]])
 
+
+
+
+def update_eps_for_spectrum(model_parameters,wl):
+    '''
+    Updates model_parameters['eps'] to the closed provided value in model_parameters['wl_eps_set'] to wl
+    '''
+    if ('eps_set' in model_parameters.keys() and 'wl_eps_set' in model_parameters.keys()):
+        wl_eps_array = model_parameters['wl_eps_set']
+        cur_idx = np.argmin(np.abs(wl-wl_eps_array)) #best results if calculated spectra is identical to epsilon creation spectra
+        cur_eps = model_parameters['eps_set'][:,:,cur_idx]
+        model_parameters['eps'] = cur_eps
+
+def euler_rotation_matrix(r_x, r_y, r_z):
+    '''
+    Produces a rotation matrix corresponding to rotation in radians about z, then y, then x
+    '''
+    r_matrix_x = np.array([[1, 0, 0], [0, np.cos(r_x), -np.sin(r_x)], [0, np.sin(r_x), np.cos(r_x)]])
+    r_matrix_y = np.array([[np.cos(r_y), 0, np.sin(r_y)], [0, 1, 0], [-np.sin(r_y), 0, np.cos(r_y)]])
+    r_matrix_z = np.array([[np.cos(r_z), -np.sin(r_z), 0], [np.sin(r_z), np.cos(r_z), 0], [0, 0, 1]])
+    rotation_matrix = np.dot(r_matrix_x,np.dot(r_matrix_y,r_matrix_z))
+    return rotation_matrix
+
+from scipy.spatial.transform import Rotation
+def quaternion_rotation_matrix(quaternion):
+    '''
+    Produces a rotation matrix (ndarray) corresponding to given quaternion
+    :param ndarray quaternion: quaternion in form x,y,z,a
+    '''
+    rotation = Rotation.from_quat(quaternion)
+    return rotation.as_matrix()
 
 class Wave(object):
     """
@@ -256,21 +295,37 @@ class Layer(object):
         :return: rotated permittivity tensor: a 3x3 Numpy array
         """
         # Retrieve the rotation axis
+        single_axis = True
         if isinstance(axis, str):
+
             if axis == 'x':
                 axis = x_u
             elif axis == 'y':
                 axis = y_u
             elif axis == 'z':
                 axis = z_u
+            elif (axis == 'xyz' or axis =='quat'):
+                single_axis = False
             else:
                 raise Exception('Invalid rotation axis.')
         else:
             raise Exception('Invalid rotation axis.')
         # Rotation matrix
-        R = rot_mat(axis, angle_rad)
+        if (single_axis):
+            R = rot_mat(axis, angle_rad)
+        elif(axis == 'xyz'):
+            R = euler_rotation_matrix(angle_rad[0],angle_rad[1],angle_rad[2])
+        elif(axis == 'quat'):
+            R = quaternion_rotation_matrix(angle_rad) #note that scalar is last
         # Rotate permittivity tensor
-        eps_rot = la_np.multi_dot((R, eps, R.transpose()))
+        eps_dim = np.ndim(eps)
+        if (eps_dim == 2):
+            eps_rot = la_np.multi_dot((R, eps, R.transpose()))
+        elif (eps_dim == 3): #for spectral dispersion
+            eps_rot = np.einsum("ij,jkl->ikl",R,
+                                np.einsum("ijl,jk,ikl",eps,R.transpose()))
+        else:
+            ValueError("Permittivity tensor must be dimesion 2 or 3")
         return eps_rot
 
     def _build_M(self):
@@ -499,7 +554,8 @@ class Layer(object):
         id_refl = [sorted_indices[0], sorted_indices[1]]
         id_trans = [sorted_indices[2], sorted_indices[3]]
         """
-
+        if (not (len(id_trans)==2 and len(id_refl)==2)): #handling for when there is numerical instability in eigenvectors
+            return None, None, None
         # Sort in a unique way by analysing p
         # Find out whether it is birefringent
         # Calculate Cp0 and Cp1 using Pointing vectors
@@ -646,6 +702,10 @@ class Layer(object):
         # Sort them
         p_sorted, q_sorted, partial_waves_sorted = self._sort_p_q(p_unsorted, q_unsorted, partial_waves_unsorted)
         # p_sorted, partial_waves_sorted = self._correct_p(q_sorted)  # not used here, but can be un-commented
+
+        if (p_sorted is None):
+            p_sorted, q_sorted, partial_waves_sorted = p_unsorted,q_unsorted,partial_waves_unsorted
+            print("Waves Could Not Be Sorted")
         return p_sorted, q_sorted, partial_waves_sorted
 
     def build_P_Q(self):
@@ -1003,7 +1063,8 @@ class Structure(object):
         E_period = np.identity(4)
         E = np.identity(4)
         for kl in range(0, N_layers, 1):
-            E_layer = la_sp.expm(1j * self.layers[kl].D * self.layers[kl].thickness * self.k0)
+            exponent = 1j * self.layers[kl].D * self.layers[kl].thickness * self.k0
+            E_layer = la_sp.expm(exponent)
             E_period = np.dot(E_layer, E_period)
         for kp in range(0, self.N_periods, 1):
             E = np.dot(E_period, E)
@@ -1018,7 +1079,6 @@ class Structure(object):
         T = self._build_transfer_matrix_partial()
         T = la_np.multi_dot((la_np.inv(self.exit.P), T, self.entry.P))
         return T
-
     def _build_transfer_matrix_partial(self):
         """
         This function calculates the partial transfer matrix of the system with the matrices of eigenvalues and
@@ -1353,7 +1413,7 @@ class Structure(object):
         ])
         return R, T
 
-    def get_fresnel(self, method="SM"):
+    def get_fresnel(self, method="SM",circ = False):
         r"""
         This function calculates the ``Structure``’s reflection and transmission coefficients in the linear polarisation basis, with the
         method chosen by the user.
@@ -1388,6 +1448,8 @@ class Structure(object):
             J_refl, J_trans = self._get_fresnel_EM()
         else:
             raise Exception('Invalid method (only SM, TM and EM allowed).')
+        if (circ):
+            J_refl, J_trans = self.fresnel_to_fresnel_circ(J_refl,J_trans)
         return J_refl, J_trans
 
     def _get_fresnel_SM(self):
@@ -1407,14 +1469,13 @@ class Structure(object):
             [SM[1, 0], SM[1, 1]]
         ])
         return J_refl, J_trans
-
     def _get_fresnel_TM(self):
         """
         This function calculates the ``Structure``’s reflection and transmission coefficients in the linear polarisation basis, with the transfer
         matrix method with the eigenvectors and eigenvalues. See ``Structure.get_fresnel`` for more details.
         """
         TM = self.build_transfer_matrix()
-
+        print(TM)
         deno = TM[2, 2] * TM[3, 3] - TM[3, 2] * TM[2, 3]
         r_p_to_p = (TM[3, 0] * TM[2, 3] - TM[2, 0] * TM[3, 3]) / deno
         r_p_to_s = (TM[2, 0] * TM[3, 2] - TM[3, 0] * TM[2, 2]) / deno
@@ -1884,8 +1945,60 @@ class Model(object):
         exit_space = HalfSpace(epsilon_exit, self.Kx, self.Kz_exit, self.k0, category="isotropic")
         return entry_space, exit_space
 
+    def get_refl_trans_coefs(self, circ=False, method="SM"):
+        r"""
+        This function calculates the ``Model``’s reflection and transmission coefs in the linear or circular polarisation basis, with the
+        method chosen by the user.
+
+        :param bool circ: ``False`` to express results in the linear polarisation basis, ``True`` to express results in
+                          the circular polarisation basis
+        :param string method: the matrix method to use for the calculation:
+
+                              - ``"SM"`` for the scattering matrix method
+                              - ``"TM"`` for the transfer matrix method with the eigenvectors and eigenvalues
+                              - ``"EM"`` for the transfer matrix method with the direct exponential of Berreman’s matrix
+
+        :return: reflection coef: 2x2 Numpy array whose values correspond to:
+
+                     - in the linear polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 R_{p \: \text{to} \: p} & R_{s \: \text{to} \: p} \\
+                                 R_{p \: \text{to} \: s} & R_{s \: \text{to} \: s}
+                             \end{bmatrix}
+
+                    - in the circular polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 R_{RCP \: \text{to} \: RCP} & R_{LCP \: \text{to} \: RCP} \\
+                                 R_{RCP \: \text{to} \: LCP} & R_{LCP \: \text{to} \: LCP}
+                             \end{bmatrix}
+
+
+        :return: transmission coef: 2x2 Numpy array whose values correspond to:
+
+                     - in the linear polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 T_{p \: \text{to} \: p} & T_{s \: \text{to} \: p} \\
+                                 T_{p \: \text{to} \: s} & T_{s \: \text{to} \: s}
+                             \end{bmatrix}
+
+                    - in the circular polarisation basis (``circ=False``):
+
+                         .. math::
+                             \begin{bmatrix}
+                                 T_{RCP \: \text{to} \: RCP} & T_{LCP \: \text{to} \: RCP} \\
+                                 T_{RCP \: \text{to} \: LCP} & T_{LCP \: \text{to} \: LCP}
+                             \end{bmatrix}
+
+        """
+        return self.structure.get_fresnel(method=method,circ = circ)
+
     def get_refl_trans(self, circ=False, method="SM"):
-        # TODO update docstring
         r"""
         This function calculates the ``Model``’s reflectance in the linear or circular polarisation basis, with the
         method chosen by the user.
@@ -2065,8 +2178,9 @@ class SlabModel(Model):
     """
 
     def __init__(self, eps, thickness_nm, n_entry, n_exit, wl_nm, theta_in_rad, rotangle_rad=0, rotaxis='z'):
-        if rotangle_rad != 0:
-            eps = Layer.rotate_permittivity(eps, rotangle_rad, rotaxis)
+        to_rotate = False
+        if ((np.isscalar(rotangle_rad) and rotangle_rad != 0) or isinstance(rotangle_rad,np.ndarray)): to_rotate =True
+        if to_rotate: eps = Layer.rotate_permittivity(eps, rotangle_rad, rotaxis)
         self.eps = eps
         self.thickness = thickness_nm
         super().__init__(n_entry, n_exit, wl_nm, theta_in_rad)
@@ -2358,6 +2472,110 @@ class Spectrum(object):
             raise Exception('Invalid model type.')
         return new_model
 
+    def calculate_refl_trans_coefs(self,circ=False,method="SM",talk =False):
+        """
+               This function creates the required ``Model`` and calculates the reflection spectrum in the linear (default) or
+               circular polarisation basis, usinq a chosen method (by default the scattering matrix method). The results are
+               stored in the initially empty dictionary ``Spectrum.data``. The values of the results correspond to:
+
+               - in the linear polarisation basis (``circ=False``):
+
+                   - ``Spectrum.data["R_p_to_p"]``: reflection spectrum for incoming :math:`p`-polarisation to outgoing :math:`p`-polarisation, 1d Numpy array
+                   - ``Spectrum.data["R_p_to_s"]``: reflection spectrum for incoming :math:`p`-polarisation to outgoing :math:`s`-polarisation, 1d Numpy array
+                   - ``Spectrum.data["R_s_to_p"]``: reflection spectrum for incoming :math:`s`-polarisation to outgoing :math:`p`-polarisation, 1d Numpy array
+                   - ``Spectrum.data["R_s_to_s"]``: reflection spectrum for incoming :math:`s`-polarisation to outgoing :math:`s`-polarisation, 1d Numpy array
+
+               - in the circular polarisation basis (``circ=False``):
+
+                   - ``Spectrum.data["R_R_to_R"]``: reflection spectrum for incoming :math:`RCP`-polarisation to outgoing :math:`RCP`-polarisation, 1d Numpy array
+                   - ``Spectrum.data["R_R_to_L"]``: reflection spectrum for incoming :math:`RCP`-polarisation to outgoing :math:`LCP`-polarisation, 1d Numpy array
+                   - ``Spectrum.data["R_L_to_R"]``: reflection spectrum for incoming :math:`LCP`-polarisation to outgoing :math:`RCP`-polarisation, 1d Numpy array
+                   - ``Spectrum.data["R_L_to_L"]``: reflection spectrum for incoming :math:`LCP`-polarisation to outgoing :math:`LCP`-polarisation, 1d Numpy array
+
+               as well as ``time_elapsed`` (float) which calculates the time that it took to compute the spectrum.
+
+               :param bool circ: ``False`` to express results in the linear polarisation basis, ``True`` to express results in
+                                 the circular polarisation basis
+               :param string method: the matrix method to use for the calculation:
+
+                                     - ``"SM"`` for the scattering matrix method
+                                     - ``"TM"`` for the transfer matrix method with the eigenvectors and eigenvalues
+                                     - ``"EM"`` for the transfer matrix method with the direct exponential of Berreman’s matrix
+               :param bool talk: ``True`` (non-default) to display the computation progress, wavelength per wavelength
+               """
+        t = time.time()
+        # Create empty variables
+        r_00 = []
+        r_01 = []
+        r_10 = []
+        r_11 = []
+        t_00 = []
+        t_01 = []
+        t_10 = []
+        t_11 = []
+        # Browse through all wavelengths
+        for wl in self.wl_list:
+            # If mo_type and mo_param is not a list, the Spectrum is for one Model only
+            if not isinstance(self.mo_type, list):
+                if ('eps_set' in self.mo_param.keys()):
+                    update_eps_for_spectrum(self.mo_param, wl)
+                model = Spectrum.create_model(self.mo_type, self.mo_param, wl)
+            # If mo_type and mo_param are lists, the Spectrum is for a MixedModel
+            else:
+                partial_models_list = []
+                for km in range(len(self.mo_type)):
+                    if ('eps_set' in self.mo_param.keys()):
+                        update_eps_for_spectrum(self.mo_param[km], wl)
+                    partial_model = Spectrum.create_model(self.mo_type[km], self.mo_param[km], wl)
+                    partial_models_list.append(partial_model)
+                model = MixedModel(partial_models_list,
+                                   self.mo_param[0]['n_entry'],
+                                   self.mo_param[0]['n_exit'],
+                                   wl,
+                                   self.mo_param[0]['theta_in_rad'])
+                # The MixedModel class will check that the angles of incidence, n_entry and n_exit are the same for
+                # all models in the list, therefore it is not necessary to check again here.
+            self.model.append(model)
+
+            # Calculate the reflectance using the chosen method and for the given polarisation basis
+            refl, trans = model.get_refl_trans_coefs(method=method, circ=circ)
+            # Add the reflectance to lists
+            r_00.append(refl[0, 0])
+            r_01.append(refl[0, 1])
+            r_10.append(refl[1, 0])
+            r_11.append(refl[1, 1])
+            t_00.append(trans[0, 0])
+            t_01.append(trans[0, 1])
+            t_10.append(trans[1, 0])
+            t_11.append(trans[1, 1])
+
+            if talk:
+                print("Wavelength " + str(wl) + " nm done.")
+
+        elapsed = time.time() - t
+
+        # Save the lists in the data dictionary
+        # If there's already a variable with the same key, it'll overwrite it
+        if circ:
+            self.data['r_R_to_R'] = np.array(r_00)
+            self.data['r_L_to_R'] = np.array(r_01)
+            self.data['r_R_to_L'] = np.array(r_10)
+            self.data['r_L_to_L'] = np.array(r_11)
+            self.data['t_R_to_R'] = np.array(t_00)
+            self.data['t_L_to_R'] = np.array(t_01)
+            self.data['t_R_to_L'] = np.array(t_10)
+            self.data['t_L_to_L'] = np.array(t_11)
+        else:
+            self.data['r_p_to_p'] = np.array(r_00)
+            self.data['r_s_to_p'] = np.array(r_01)
+            self.data['r_p_to_s'] = np.array(r_10)
+            self.data['r_s_to_s'] = np.array(r_11)
+            self.data['t_p_to_p'] = np.array(t_00)
+            self.data['t_s_to_p'] = np.array(t_01)
+            self.data['t_p_to_s'] = np.array(t_10)
+            self.data['t_s_to_s'] = np.array(t_11)
+
+        self.data['time_elapsed'] = elapsed
     def calculate_refl_trans(self, circ=False, method="SM", talk=False):
         """
         This function creates the required ``Model`` and calculates the reflection spectrum in the linear (default) or
@@ -2421,7 +2639,6 @@ class Spectrum(object):
 
             # Calculate the reflectance using the chosen method and for the given polarisation basis
             reflectance, transmittance = model.get_refl_trans(method=method, circ=circ)
-
             # Add the reflectance to lists
             r_00.append(reflectance[0, 0])
             r_01.append(reflectance[0, 1])
@@ -2459,6 +2676,66 @@ class Spectrum(object):
             self.data['T_s_to_s'] = np.array(t_11)
 
         self.data['time_elapsed'] = elapsed
+    def export_r_t_matrices(self,type = "intensity"):
+        """
+            If spectra is already calculated, this returns Berreman R and T matrices in whatever
+            basis they were calculated in.
+        """
+        matrix_type = 'unknown'
+        spec_size = np.size(self.wl_list)
+        r_matrix = np.zeros((2,2,spec_size),dtype = np.cdouble)
+        t_matrix = np.zeros((2,2,spec_size),dtype = np.cdouble)
+        if (type == "intensity"):
+            if 'R_p_to_p' in self.data:
+                matrix_type = 'ps'
+            elif 'R_R_to_R' in self.data:
+                matrix_type = 'rl'
+            else:
+                ValueError('Spectra Must Already Be Calculated')
+            if (matrix_type == 'ps'):
+                r_matrix[0,0,:] = self.data['R_p_to_p']
+                r_matrix[0,1,:] = self.data['R_s_to_p']
+                r_matrix[1,0,:] = self.data['R_p_to_s']
+                r_matrix[1,1,:] = self.data['R_s_to_s']
+                t_matrix[0,0,:] = self.data['T_p_to_p']
+                t_matrix[0,1,:] = self.data['T_s_to_p']
+                t_matrix[1,0,:] = self.data['T_p_to_s']
+                t_matrix[1,1,:] = self.data['T_s_to_s']
+            elif (matrix_type == "rl"):
+                r_matrix[0,0,:] = self.data['R_R_to_R']
+                r_matrix[0,1,:] = self.data['R_L_to_R']
+                r_matrix[1,0,:] = self.data['R_R_to_L']
+                r_matrix[1,1,:] = self.data['R_L_to_L']
+                t_matrix[0,0,:] = self.data['T_R_to_R']
+                t_matrix[0,1,:] = self.data['T_L_to_R']
+                t_matrix[1,0,:] = self.data['T_R_to_L']
+                t_matrix[1,1,:] = self.data['T_L_to_L']
+        elif (type== "amplitude"):
+            if 'r_p_to_p' in self.data:
+                matrix_type = 'ps'
+            elif 'r_R_to_R' in self.data:
+                matrix_type = 'rl'
+            else:
+                ValueError('Spectra Must Already Be Calculated')
+            if (matrix_type == 'ps'):
+                r_matrix[0,0,:] = self.data['r_p_to_p']
+                r_matrix[0,1,:] = self.data['r_s_to_p']
+                r_matrix[1,0,:] = self.data['r_p_to_s']
+                r_matrix[1,1,:] = self.data['r_s_to_s']
+                t_matrix[0,0,:] = self.data['t_p_to_p']
+                t_matrix[0,1,:] = self.data['t_s_to_p']
+                t_matrix[1,0,:] = self.data['t_p_to_s']
+                t_matrix[1,1,:] = self.data['t_s_to_s']
+            elif (matrix_type == "rl"):
+                r_matrix[0,0,:] = self.data['r_R_to_R']
+                r_matrix[0,1,:] = self.data['r_L_to_R']
+                r_matrix[1,0,:] = self.data['r_R_to_L']
+                r_matrix[1,1,:] = self.data['r_L_to_L']
+                t_matrix[0,0,:] = self.data['t_R_to_R']
+                t_matrix[0,1,:] = self.data['t_L_to_R']
+                t_matrix[1,0,:] = self.data['t_R_to_L']
+                t_matrix[1,1,:] = self.data['t_L_to_L']
+        return r_matrix, t_matrix
 
     def rename_result(self, old_key, new_key):
         """
